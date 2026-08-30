@@ -1,0 +1,40 @@
+@startuml
+package "Client (Extension)" {
+  class Extension {
+    +openPopup()
+    +sendQuery(q)
+    +renderResult(r)
+    +cacheResult(r)
+  }
+  class Background {
+    +handleMessage()
+    +callAPI(path, body)
+  }
+}
+package "Server" {
+  class Backend {
+    +POST_search(q, auth)
+    +POST_ingest(data)
+    +buildPrompt(ctx)
+  }
+  class QueryEngine {
+    +normalizeQuery(q)
+    +embedQuery(q)
+    +vectorSearch(vec)
+    +assembleContext(ids)
+  }
+  class Ingestor {
+    +cleanDataset()
+    +computeEmbeddings()
+    +writeIndex()
+  }
+}
+database "VectorDB (chroma.sqlite3)" as VDB
+Extension --> Background : uses
+Background --> Backend : POST /search
+Backend --> QueryEngine : invokes
+Backend --> Ingestor : invokes (admin)
+Ingestor --> VDB : writes
+QueryEngine --> VDB : nn_search
+Backend --> "LLM Provider" : prompt -> completion
+@enduml

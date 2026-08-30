@@ -1,0 +1,62 @@
+[
+  {
+    "id": "pattern-hashmap-lookup",
+    "text": "HashMap lookup pattern: when you need to find a complement, pair, or previously seen value in O(1), store values in a HashMap as you iterate. Check existence before inserting. Problems: Two Sum, Four Sum, Subarray Sum equals K, Group Anagrams."
+  },
+  {
+    "id": "pattern-two-pointers",
+    "text": "Two Pointers pattern: use when array is sorted or you need to find a pair. Place one pointer at start, one at end. Move them toward each other based on condition. Problems: Two Sum II, Container With Most Water, 3Sum, Trapping Rain Water."
+  },
+  {
+    "id": "pattern-sliding-window",
+    "text": "Sliding Window pattern: use for subarrays or substrings of variable or fixed size. Expand right pointer, shrink left pointer when condition breaks. Use a set or map to track window contents. Problems: Longest Substring Without Repeating Characters, Max Sum Subarray, Minimum Window Substring."
+  },
+  {
+    "id": "pattern-fast-slow-pointers",
+    "text": "Fast and Slow Pointers pattern: use to detect cycles in linked lists or arrays. Fast pointer moves 2 steps, slow moves 1. They meet if a cycle exists. Problems: Linked List Cycle, Find Duplicate Number, Middle of Linked List."
+  },
+  {
+    "id": "pattern-binary-search",
+    "text": "Binary Search pattern: use when array is sorted or search space can be halved. Maintain low and high pointers. Move mid based on condition. Problems: Search in Rotated Sorted Array, Find Minimum in Rotated Array, Koko Eating Bananas."
+  },
+  {
+    "id": "pattern-dp-1d",
+    "text": "1D Dynamic Programming pattern: use when problem has overlapping subproblems and optimal substructure. Define dp[i] as answer for subproblem i. Build up from base case. Problems: Climbing Stairs, House Robber, Coin Change, Longest Increasing Subsequence."
+  },
+  {
+    "id": "pattern-dp-2d",
+    "text": "2D Dynamic Programming pattern: use for grid problems or string comparison. Define dp[i][j] as answer for subproblem at row i col j. Problems: Unique Paths, Longest Common Subsequence, Edit Distance, Coin Change 2."
+  },
+  {
+    "id": "pattern-bfs",
+    "text": "BFS Breadth First Search pattern: use for shortest path in unweighted graph or level order traversal. Use a queue. Process level by level. Problems: Binary Tree Level Order, Shortest Path in Binary Matrix, Word Ladder, Rotting Oranges."
+  },
+  {
+    "id": "pattern-dfs",
+    "text": "DFS Depth First Search pattern: use for exploring all paths, connected components, or tree traversal. Use recursion or explicit stack. Mark visited nodes. Problems: Number of Islands, Clone Graph, Path Sum, All Paths Source to Target."
+  },
+  {
+    "id": "pattern-backtracking",
+    "text": "Backtracking pattern: use for generating all combinations, permutations, or subsets. Make a choice, recurse, then undo the choice. Prune branches early when constraint is violated. Problems: Subsets, Permutations, Combination Sum, N-Queens, Sudoku Solver."
+  },
+  {
+    "id": "pattern-monotonic-stack",
+    "text": "Monotonic Stack pattern: use when you need next greater or smaller element. Maintain a stack that is always increasing or decreasing. Pop when current element breaks the order. Problems: Daily Temperatures, Largest Rectangle in Histogram, Next Greater Element."
+  },
+  {
+    "id": "pattern-heap-top-k",
+    "text": "Heap Top K pattern: use when you need the K largest or smallest elements. Use a min-heap of size K for K largest, max-heap for K smallest. Problems: Kth Largest Element, Top K Frequent Elements, K Closest Points to Origin."
+  },
+  {
+    "id": "pattern-merge-intervals",
+    "text": "Merge Intervals pattern: sort intervals by start time. Compare each interval with the last merged one. If they overlap, extend the end. Problems: Merge Intervals, Insert Interval, Meeting Rooms, Non-overlapping Intervals."
+  },
+  {
+    "id": "pattern-trie",
+    "text": "Trie prefix tree pattern: use for problems involving prefix search or word dictionaries. Each node has children map and isEnd flag. Insert and search by traversing character by character. Problems: Implement Trie, Word Search II, Replace Words."
+  },
+  {
+    "id": "pattern-union-find",
+    "text": "Union Find Disjoint Set pattern: use for grouping elements into connected components. Maintain parent array. Find root with path compression. Union by rank. Problems: Number of Connected Components, Redundant Connection, Accounts Merge."
+  }
+]

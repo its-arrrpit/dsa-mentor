@@ -1,0 +1,25 @@
+@startuml
+left to right direction
+actor User
+package "Client Tier - Browser Extension" {
+  class popup.html
+  class background.js
+  class content.js
+}
+package "Backend Tier - Node.js" {
+  class server.js
+}
+package "RAG / Indexing Tier" {
+  class ingest.py
+  class query.py
+  database "chroma.sqlite3" as VDB
+}
+User --> popup.html : Search Query
+popup.html --> background.js : user action
+background.js --> server.js : POST /search
+server.js --> query.py : invoke search
+query.py --> VDB : vector search (ids + scores)
+query.py --> server.js : candidate contexts
+server.js --> background.js : JSON response
+ingest.py --> VDB : write embeddings
+@enduml

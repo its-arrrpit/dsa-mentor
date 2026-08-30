@@ -1,0 +1,20 @@
+@startuml
+left to right direction
+actor User
+rectangle "Query Normalization" as Normalize
+rectangle "Embedding Request" as EmbedReq
+rectangle "Vector Search (Chroma)" as VSearch
+rectangle "Scoring & Context Build" as Scoring
+rectangle "Prompt Template" as Prompt
+rectangle "LLM Invocation" as LLM
+database "Vector DB\nchroma.sqlite3" as VDB
+User --> Normalize
+Normalize --> EmbedReq
+EmbedReq --> VSearch : vector
+VSearch --> Scoring : ids + scores
+Scoring --> Prompt
+Prompt --> LLM
+LLM --> Scoring : answer
+LLM --> Scoring : if unavailable -> fallback
+VSearch --> VDB
+@enduml

@@ -1,0 +1,39 @@
+classDiagram
+  class Extension <<service>> {
+    +openPopup()
+    +sendQuery(q)
+    +renderResult(r)
+    +cacheResult(r)
+  }
+  class Background <<service>> {
+    +handleMessage()
+    +callAPI(path, body)
+  }
+  class Backend <<service>> {
+    +POST_search(q, auth)
+    +POST_ingest(data)
+    +buildPrompt(ctx)
+  }
+  class Ingestor <<service>> {
+    +cleanDataset()
+    +computeEmbeddings()
+    +writeIndex()
+  }
+  class QueryEngine <<service>> {
+    +normalizeQuery(q)
+    +embedQuery(q)
+    +vectorSearch(vec)
+    +assembleContext(ids)
+  }
+  class VectorDB {
+    +storeVectors(id, vec)
+    +search(vec)
+  }
+
+  Extension --> Background : uses
+  Background --> Backend : POST /search
+  Backend --> QueryEngine : invokes
+  Backend --> Ingestor : invokes (admin)
+  Ingestor --> VectorDB : writes
+  QueryEngine --> VectorDB : nn_search
+  Backend --> LLM[(LLM Provider)] : prompt -> completion

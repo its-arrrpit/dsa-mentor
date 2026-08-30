@@ -1,0 +1,16 @@
+flowchart TD
+  Start([User opens extension])
+  Start --> EnterQuery[Enter search query]
+  EnterQuery --> SendRequest[Extension sends POST /search]
+  SendRequest --> Auth[Backend validates/auth]
+  Auth --> Normalize[Query normalization]
+  Normalize --> EmbedReq[Request embedding (LLM/embed API)]
+  EmbedReq --> VectorSearch[Vector search (Chroma)]
+  VectorSearch --> Candidates[Select candidate passages]
+  Candidates --> BuildPrompt[Build prompt + context]
+  BuildPrompt --> LLMCall[Call LLM for answer]
+  LLMCall -->|success| ReturnAnswer[Post-process and return answer]
+  LLMCall -->|failure| FallbackCache[Return cached answer / error]
+  ReturnAnswer --> Display[Extension displays answer]
+  FallbackCache --> Display
+  Display --> End([Done])

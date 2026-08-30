@@ -1,0 +1,19 @@
+@startuml
+actor User
+participant Extension
+participant Backend
+participant EmbedAPI
+participant VectorDB
+participant LLM
+
+User -> Extension : enter query
+Extension -> Backend : POST /search {q, auth}
+Backend -> EmbedAPI : request embedding for {q}
+EmbedAPI --> Backend : return embedding vector
+Backend -> VectorDB : vector search (k-NN)
+VectorDB --> Backend : candidate ids + scores
+Backend -> LLM : build prompt + request completion
+LLM --> Backend : answer (text)
+Backend --> Extension : JSON {results, answer}
+Extension --> User : render results
+@enduml

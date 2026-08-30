@@ -1,0 +1,26 @@
+graph LR
+  User((User))
+  subgraph Client["Client Tier — Browser Extension"]
+    Popup[/popup.html (UI)/]
+    Background[/background.js (Service Worker)/]
+    Content[/content.js (Page Script)/]
+  end
+  Backend[/backend/server.js (API)/]
+  subgraph RAG["RAG / Indexing Tier"]
+    QueryPy[query.py]
+    Ingest[ingest.py]
+    VectorDB((Vector DB\nchroma.sqlite3))
+  end
+  LLM((LLM / Embedding Provider))
+
+  User -->|Search Query| Popup
+  Popup -->|User action| Background
+  Background -->|POST /search (q)| Backend
+  Backend -->|invoke search| QueryPy
+  QueryPy -->|vector search (ids + scores)| VectorDB
+  QueryPy -->|embed / complete| LLM
+  QueryPy -->|candidate contexts (passages)| Backend
+  Backend -->|JSON response (results)| Background
+  Background -->|display| Popup
+  Ingest -->|create embeddings → write| VectorDB
+  Ingest -->|uses| LLM

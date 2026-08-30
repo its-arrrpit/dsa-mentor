@@ -1,0 +1,20 @@
+@startuml
+start
+:Open extension;
+:Enter search query;
+:Extension -> Backend : POST /search
+:Backend validate auth;
+:Normalize query;
+:Request embedding from EmbedAPI;
+:Vector search (Chroma);
+:Select candidate passages;
+:Build prompt;
+:Call LLM;
+alt LLM OK
+  :Post-process and return answer;
+else LLM failure
+  :Return cached answer or helpful error;
+end
+:Extension displays answer;
+stop
+@enduml

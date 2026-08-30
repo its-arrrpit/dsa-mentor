@@ -1,0 +1,22 @@
+@startuml
+left to right direction
+package "Client" {
+  class "Extension UI\npopup.html"
+  class "Background\nbackground.js"
+}
+package "Server" {
+  class "API Gateway\nbackend/server.js"
+  class "Search & Retrieval"
+  class "Ingestion & Indexing"
+  class "Response Assembly"
+}
+database "Vector DB\nchroma.sqlite3"
+"Extension UI" --> "Background" : click / query
+"Background" --> "API Gateway" : POST /search
+"API Gateway" --> "Search & Retrieval" : validate / auth
+"API Gateway" --> "Ingestion & Indexing" : admin / ingest
+"Ingestion & Indexing" --> "Vector DB" : compute embeddings
+"Search & Retrieval" --> "Vector DB" : nn search
+"Search & Retrieval" --> "Response Assembly" : candidates
+"Response Assembly" --> "LLM Provider" : prompt
+@enduml
