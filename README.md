@@ -99,14 +99,32 @@ graph TB
 ### Prerequisites
 * [Node.js](https://nodejs.org/) (v18+)
 * [Python](https://www.python.org/) (v3.10+)
-* [Ollama](https://ollama.ai/) with `qwen2.5-coder:7b` installed:
-  ```bash
-  ollama run qwen2.5-coder:7b
-  ```
+* [Ollama](https://ollama.ai/) installed on your machine
 
 ---
 
-### Step 1: Start the RAG Vector Service
+### Step 1: Download & Load the Local AI Model (Ollama)
+
+This project runs 100% locally using **Ollama** so your LeetCode code is never sent to third-party cloud servers.
+
+1. **Install Ollama** from [ollama.com](https://ollama.com/download) (Windows / macOS / Linux).
+2. **Pull the default coding model** (`qwen2.5-coder:7b`):
+   ```bash
+   ollama pull qwen2.5-coder:7b
+   ```
+   *(Alternative supported models: `ollama pull deepseek-coder:6.7b` or `ollama pull llama3.1`)*
+3. **Verify the model is running**:
+   ```bash
+   ollama list
+   ```
+   Make sure the Ollama application / service is running in the background on port `11434`.
+
+> **Note on Model Configuration:**  
+> You can switch the active model at any time by editing the `model` field in [`backend/server.js`](./backend/server.js).
+
+---
+
+### Step 2: Start the RAG Vector Service
 ```bash
 cd rag
 pip install flask flask-cors chromadb sentence-transformers
@@ -116,7 +134,7 @@ python query.py
 
 ---
 
-### Step 2: Start the Backend API Server
+### Step 3: Start the Backend API Server
 ```bash
 cd backend
 npm install
@@ -126,14 +144,14 @@ npm start
 
 ---
 
-### Step 3: Load the Chrome Extension
+### Step 4: Load the Chrome Extension
 1. Open Google Chrome and go to `chrome://extensions/`.
 2. Enable **Developer mode** in the top-right corner.
 3. Click **Load unpacked** and select the [`extension/`](./extension) directory.
 
 ---
 
-### Step 4: Test Live on LeetCode
+### Step 5: Test Live on LeetCode
 1. Open any problem on [LeetCode](https://leetcode.com/problems/two-sum/).
 2. Click the **⚡ DSA Mentor** toggle widget in the bottom-right corner.
 3. Request a hint, debug your current code attempt, or analyze complexity in real time!
