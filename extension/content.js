@@ -1,4 +1,4 @@
-﻿// content.js — runs on every leetcode.com/problems/* page
+// content.js — runs on every leetcode.com/problems/* page
 
 // ─── 1. Extract problem data from the DOM ────────────────────────────────────
 
@@ -27,20 +27,43 @@ function getDifficulty() {
   ).trim()
 }
 
-function getUserCode() {
-  // LeetCode new editor
-  const viewLines = document.querySelector('.view-lines')
-  if (viewLines) return viewLines.innerText
+async function getUserCodeAsync() {
+  // 1. First try communicating with page-bridge.js (running in page context)
+  const codeFromBridge = await new Promise((resolve) => {
+    let resolved = false
+    const timer = setTimeout(() => {
+      if (!resolved) {
+        resolved = true
+        document.removeEventListener('dsa-response-code', onCode)
+        resolve(null)
+      }
+    }, 300)
 
-  // CodeMirror 6 fallback
-  const cmView = document.querySelector('.cm-content')
-  if (cmView) return cmView.innerText
+    const onCode = (e) => {
+      if (!resolved) {
+        resolved = true
+        clearTimeout(timer)
+        document.removeEventListener('dsa-response-code', onCode)
+        resolve(e.detail?.code || null)
+      }
+    }
 
-  // Monaco fallback
-  if (window.monaco) {
-    const editors = window.monaco.editor.getEditors()
-    if (editors.length > 0) return editors[0].getValue()
+    document.addEventListener('dsa-response-code', onCode)
+    document.dispatchEvent(new CustomEvent('dsa-request-code'))
+  })
+
+  if (typeof codeFromBridge === 'string' && codeFromBridge.trim().length > 0) {
+    return codeFromBridge
   }
+
+  // 2. CodeMirror 6 fallback
+  const cmView = document.querySelector('.cm-content')
+  if (cmView && cmView.innerText.trim()) return cmView.innerText
+
+  // 3. Monaco DOM viewport fallback
+  const viewLines = document.querySelector('.view-lines')
+  if (viewLines && viewLines.innerText.trim()) return viewLines.innerText
+
   return ''
 }
 
@@ -81,13 +104,29 @@ function isProblemSolved() {
     if (el && /accepted|success/i.test(el.innerText || '')) return true
   }
 
-  // Do not use broad page text like "Solved" because it appears on many
-  // LeetCode pages and causes false positives.
+  // Check the problem header "Solved" badge near the title
+  const titleEl = document.querySelector('[data-cy="question-title"]') ||
+                  document.querySelector('.text-title-large') ||
+                  document.querySelector('h4')
+  if (titleEl) {
+    const headerRow = titleEl.closest('.flex, .w-full, div')
+    if (headerRow && /\bSolved\b/i.test(headerRow.innerText || '')) {
+      return true
+    }
+  }
+
+  const solvedBadge = document.querySelector('.text-olive, [class*="text-olive"], [class*="text-green-s"]')
+  if (solvedBadge && /solved/i.test(solvedBadge.innerText || '')) {
+    return true
+  }
+
   return false
 }
 
-function getCurrentProblem() {
-  const code = getUserCode()
+const hintsHistoryByProblem = Object.create(null)
+
+async function getCurrentProblem() {
+  const code = await getUserCodeAsync()
   return {
     title: getProblemTitle(),
     description: getProblemDescription(),
@@ -169,7 +208,7 @@ function injectPanel() {
       <div id="dsa-hint-dots">
         <span class="dot active" data-level="1"></span>
         <span class="dot" data-level="2"></span>
-        <span class="dot" data-level="4"></span>
+        <span class="dot" data-level="3"></span>
       </div>
       <button id="dsa-next-hint">Next hint →</button>
     </div>
@@ -303,10 +342,80 @@ function injectPanel() {
     #dsa-output-inner {
       font-family: 'JetBrains Mono', monospace;
       font-size: 12.5px;
-      line-height: 1.7;
-      color: #c8c8c8;
+      line-height: 1.65;
+      color: #d6d6d6;
       white-space: pre-wrap;
       word-break: break-word;
+    }
+    .dsa-big-o {
+      font-family: 'JetBrains Mono', monospace;
+      color: #93c5fd;
+      background: rgba(147, 197, 253, 0.12);
+      padding: 1px 6px;
+      border-radius: 5px;
+      font-size: 12px;
+      font-weight: 600;
+      border: 1px solid rgba(147, 197, 253, 0.25);
+    }
+    .dsa-inline-code {
+      font-family: 'JetBrains Mono', monospace;
+      color: #fcd34d;
+      background: rgba(251, 191, 36, 0.1);
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+    .dsa-code-block {
+      background: #181818;
+      border: 1px solid #2a2a2a;
+      border-radius: 6px;
+      padding: 6px 10px;
+      margin: 8px 0;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: #93c5fd;
+      overflow-x: auto;
+      white-space: pre;
+    }
+    .dsa-success-box {
+      background: rgba(34, 197, 94, 0.12);
+      border: 1px solid rgba(34, 197, 94, 0.35);
+      border-radius: 8px;
+      padding: 10px 12px;
+      margin: 4px 0 8px 0;
+      color: #86efac;
+      font-family: 'Syne', sans-serif;
+      font-size: 12.5px;
+      line-height: 1.5;
+    }
+    .dsa-fail-box {
+      background: rgba(239, 68, 68, 0.12);
+      border: 1px solid rgba(239, 68, 68, 0.35);
+      border-radius: 8px;
+      padding: 10px 12px;
+      margin: 4px 0 8px 0;
+      color: #fca5a5;
+      font-family: 'Syne', sans-serif;
+      font-size: 12.5px;
+      line-height: 1.5;
+    }
+    .dsa-stat-row {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      margin-bottom: 6px;
+      font-size: 13px;
+    }
+    .dsa-stat-label {
+      font-weight: 700;
+      color: #9ca3af;
+      font-family: 'Syne', sans-serif;
+      min-width: 65px;
+    }
+    .dsa-stat-val {
+      color: #f3f4f6;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12.5px;
     }
     #dsa-placeholder { color: #444; font-family: 'Syne', sans-serif; font-size: 13px; }
     #dsa-loading { display: flex; align-items: center; gap: 8px; color: #555; font-family: 'Syne', sans-serif; font-size: 13px; }
@@ -395,7 +504,7 @@ function injectPanel() {
   })
 
   document.getElementById('dsa-next-hint').addEventListener('click', () => {
-    const nextHintMap = { 1: 2, 2: 4 }
+    const nextHintMap = { 1: 2, 2: 3 }
     const nextLevel = nextHintMap[currentHintLevel]
     if (!nextLevel) return
 
@@ -407,7 +516,7 @@ function injectPanel() {
     updateDots(currentHintLevel)
     requestAI('hint', currentHintLevel)
 
-    if (currentHintLevel === 4) {
+    if (currentHintLevel === 3) {
       document.getElementById('dsa-next-hint').disabled = true
       document.getElementById('dsa-next-hint').textContent = 'Max hints reached'
     }
@@ -432,17 +541,113 @@ function updateDots(level) {
   })
 }
 
+function formatAIText(raw) {
+  if (!raw) return ''
+  let text = String(raw).trim()
+
+  // 1. Convert code blocks ```java ... ``` or ``` ... ```
+  text = text.replace(/```(?:[a-zA-Z]*)\r?\n?([\s\S]*?)```/g, '<pre class="dsa-code-block">$1</pre>')
+
+  // 2. Convert LaTeX math syntax \( ... \) or \[ ... \]
+  text = text.replace(/\\\[(.*?)\\\]/g, '$1')
+  text = text.replace(/\\\((.*?)\\\)/g, '$1')
+
+  // 3. Convert common powers: ^2 -> ², ^3 -> ³, ^k -> ᵏ
+  text = text.replace(/\^2\b/g, '²')
+  text = text.replace(/\^3\b/g, '³')
+  text = text.replace(/\^k\b/g, 'ᵏ')
+
+  // 4. Highlight Big-O notation cleanly: O(1), O(n), O(n²), O(log n), etc.
+  text = text.replace(/\b(O\([a-zA-Z0-9²³ᵏ\s\*\+\-\/\^,]+\))/g, '<span class="dsa-big-o">$1</span>')
+
+  // 5. Convert markdown bold **text** to <strong>
+  text = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+
+  // 6. Convert markdown inline code `code` to <code class="dsa-inline-code">
+  text = text.replace(/`([^`]+)`/g, '<code class="dsa-inline-code">$1</code>')
+
+  // 7. Format Complexity lines cleanly if present
+  if (text.startsWith('Time:') || text.includes('\nTime:')) {
+    text = text
+      .replace(/(?:^|\n)Time:\s*(.*)/i, '<div class="dsa-stat-row"><span class="dsa-stat-label">⏱ Time:</span> <span class="dsa-stat-val">$1</span></div>')
+      .replace(/(?:^|\n)Space:\s*(.*)/i, '<div class="dsa-stat-row"><span class="dsa-stat-label">💾 Space:</span> <span class="dsa-stat-val">$1</span></div>')
+      .replace(/(?:^|\n)Optimal:\s*(.*)/i, '<div class="dsa-stat-row"><span class="dsa-stat-label">⚡ Optimal:</span> <span class="dsa-stat-val">$1</span></div>')
+  }
+
+  return text
+}
+
 function setOutput(text) {
   const inner = document.getElementById('dsa-output-inner')
-  if (inner) inner.innerHTML = text
+  if (inner) {
+    if (text && text.includes('id="dsa-loading"')) {
+      inner.innerHTML = text
+    } else {
+      inner.innerHTML = formatAIText(text)
+    }
+  }
 }
 
 function setLoading() {
   setOutput(`<div id="dsa-loading"><div class="dsa-spinner"></div> Thinking...</div>`)
 }
 
-function requestAI(mode, hintLevel = 1) {
-  const problem = getCurrentProblem()
+function getVisibleConsoleFeedback() {
+  const bodyText = document.body ? (document.body.innerText || '') : ''
+
+  if (bodyText.includes('Runtime Error')) {
+    const match = bodyText.match(/Runtime Error[\s\S]*?(?=(?:Testcase|Test Result|\n\n\n\n)|$)/i)
+    if (match) {
+      return {
+        type: 'ERROR',
+        details: match[0].trim().slice(0, 700)
+      }
+    }
+  }
+
+  if (bodyText.includes('Compile Error')) {
+    const match = bodyText.match(/Compile Error[\s\S]*?(?=(?:Testcase|Test Result|\n\n\n\n)|$)/i)
+    if (match) {
+      return {
+        type: 'ERROR',
+        details: match[0].trim().slice(0, 700)
+      }
+    }
+  }
+
+  if (bodyText.includes('Wrong Answer')) {
+    const inputMatch = bodyText.match(/Input\s*[:=]?\s*\n+([\s\S]*?)(?=(?:\n\s*(?:Output|Expected|Stdout))|$)/i)
+    const outputMatch = bodyText.match(/Output\s*[:=]?\s*\n+([\s\S]*?)(?=(?:\n\s*(?:Expected|Stdout))|$)/i)
+    const expectedMatch = bodyText.match(/Expected\s*[:=]?\s*\n+([\s\S]*?)(?=(?:\n\s*(?:Stdout|Case))|$)/i)
+
+    if (outputMatch && expectedMatch) {
+      return {
+        type: 'WRONG_ANSWER',
+        input: inputMatch ? inputMatch[1].trim() : '',
+        output: outputMatch ? outputMatch[1].trim() : '',
+        expected: expectedMatch ? expectedMatch[1].trim() : ''
+      }
+    }
+  }
+
+  return null
+}
+
+async function requestAI(mode, hintLevel = 1) {
+  if (isCurrentView(mode, hintLevel)) {
+    if (mode === 'debug') {
+      setOutput(`<div id="dsa-loading"><div class="dsa-spinner"></div> Reviewing code logic & tracing...</div>`)
+    } else {
+      setLoading()
+    }
+  }
+
+  const problem = await getCurrentProblem()
+  console.log('[DSA Mentor] Extracted Code (' + (problem.code ? problem.code.length : 0) + ' chars):\n' + problem.code)
+
+  const consoleFeedback = mode === 'debug' ? getVisibleConsoleFeedback() : null
+  console.log('[DSA Mentor] Detected Console Feedback:', consoleFeedback)
+
   const cacheKey = getCacheKey(mode, hintLevel, problem)
   const shouldUseCache = mode !== 'debug'
 
@@ -453,18 +658,20 @@ function requestAI(mode, hintLevel = 1) {
     return
   }
 
-  if (isCurrentView(mode, hintLevel)) {
-    setLoading()
-  }
-
   const requestId = ++requestCounter
   const viewKey = getViewKey(mode, hintLevel)
   latestRequestByView[viewKey] = requestId
+
+  const previousHintsForProblem = (mode === 'hint' && hintsHistoryByProblem[problem.title])
+    ? { ...hintsHistoryByProblem[problem.title] }
+    : {}
 
   const payload = {
     type: 'AI_REQUEST',
     mode,
     hintLevel,
+    previousHints: previousHintsForProblem,
+    consoleFeedback,
     problem: {
       title: problem.title,
       description: problem.description,
@@ -489,31 +696,54 @@ function requestAI(mode, hintLevel = 1) {
     return
   }
 
+  if (typeof chrome === 'undefined' || !chrome.runtime || !chrome.runtime.sendMessage) {
+    const msg = 'Extension was reloaded or disconnected. Please refresh this LeetCode tab (Press F5) to reconnect.'
+    if (isCurrentView(mode, hintLevel)) {
+      setOutput(msg)
+    }
+    return
+  }
+
   const requestPromise = new Promise((resolve, reject) => {
-    chrome.runtime.sendMessage(payload, (response) => {
-      const isLatestForView = latestRequestByView[viewKey] === requestId
+    try {
+      chrome.runtime.sendMessage(payload, (response) => {
+        const isLatestForView = latestRequestByView[viewKey] === requestId
 
-      if (chrome.runtime.lastError) {
-        const err = new Error(chrome.runtime.lastError.message)
-        if (shouldUseCache) delete inFlightByKey[cacheKey]
-        if (isLatestForView && isCurrentView(mode, hintLevel)) {
-          setOutput('Error: ' + err.message)
+        if (chrome.runtime.lastError) {
+          const err = new Error(chrome.runtime.lastError.message)
+          if (shouldUseCache) delete inFlightByKey[cacheKey]
+          if (isLatestForView && isCurrentView(mode, hintLevel)) {
+            setOutput('Error: ' + err.message)
+          }
+          reject(err)
+          return
         }
-        reject(err)
-        return
-      }
 
-      const result = response?.result || 'No response received.'
-      if (shouldUseCache) {
-        responseCache[cacheKey] = result
-        delete inFlightByKey[cacheKey]
-      }
+        const result = response?.result || 'No response received.'
+        if (mode === 'hint' && result && !result.startsWith('Error:')) {
+          if (!hintsHistoryByProblem[problem.title]) {
+            hintsHistoryByProblem[problem.title] = {}
+          }
+          hintsHistoryByProblem[problem.title][hintLevel] = result
+        }
 
-      if (isLatestForView && isCurrentView(mode, hintLevel)) {
-        setOutput(result)
+        if (shouldUseCache) {
+          responseCache[cacheKey] = result
+          delete inFlightByKey[cacheKey]
+        }
+
+        if (isLatestForView && isCurrentView(mode, hintLevel)) {
+          setOutput(result)
+        }
+        resolve(result)
+      })
+    } catch (err) {
+      if (shouldUseCache) delete inFlightByKey[cacheKey]
+      if (isCurrentView(mode, hintLevel)) {
+        setOutput('Error: ' + err.message + '. Please refresh this LeetCode tab (F5).')
       }
-      resolve(result)
-    })
+      reject(err)
+    }
   })
 
   if (shouldUseCache) {

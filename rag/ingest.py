@@ -1,49 +1,41 @@
-﻿from sentence_transformers import SentenceTransformer
+from sentence_transformers import SentenceTransformer
 import chromadb
 import json
+import os
 
-print("Loading embedding model...")
+print("Loading embedding model all-MiniLM-L6-v2...")
 model = SentenceTransformer('all-MiniLM-L6-v2')
 
-print("Connecting to ChromaDB...")
-client = chromadb.PersistentClient(path="./dsa_db")
+db_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "dsa_db")
+print(f"Connecting to ChromaDB at: {db_dir}")
+client = chromadb.PersistentClient(path=db_dir)
 
+# Reset pattern collection
 try:
-    client.delete_collection("dsa_knowledge")
-    print("Old collection deleted.")
-except:
+    client.delete_collection("dsa_patterns")
+    print("Old dsa_patterns collection deleted.")
+except Exception:
     pass
 
-collection = client.get_or_create_collection("dsa_knowledge")
+patterns_collection = client.get_or_create_collection("dsa_patterns")
 
-with open('patterns.json') as f:
+patterns_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'patterns.json')
+with open(patterns_file, 'r', encoding='utf-8') as f:
     patterns = json.load(f)
-print(f"Patterns loaded: {len(patterns)}")
 
-with open('kaggle_problems.json') as f:
-    kaggle = json.load(f)
-print(f"Kaggle problems loaded: {len(kaggle)}")
+print(f"Ingesting {len(patterns)} curated DSA patterns...")
 
-all_entries = patterns + kaggle
-print(f"\nTotal entries to ingest: {len(all_entries)}")
-print("This will take 3-5 minutes, please wait...\n")
+pattern_ids = [p['id'] for p in patterns]
+pattern_texts = [p['text'] for p in patterns]
+pattern_embeddings = [model.encode(t).tolist() for t in pattern_texts]
+pattern_metadatas = [{"id": p['id'], "type": "pattern"} for p in patterns]
 
-batch_size = 50
-for i in range(0, len(all_entries), batch_size):
-    batch = all_entries[i:i+batch_size]
-    
-    ids = [e['id'] for e in batch]
-    texts = [e['text'] for e in batch]
-    embeddings = [model.encode(t).tolist() for t in texts]
-    metadatas = [{"id": e['id']} for e in batch]
-    
-    collection.add(
-        ids=ids,
-        embeddings=embeddings,
-        documents=texts,
-        metadatas=metadatas
-    )
-    
-    print(f"  âœ“ Ingested {min(i+batch_size, len(all_entries))}/{len(all_entries)}")
+patterns_collection.add(
+    ids=pattern_ids,
+    embeddings=pattern_embeddings,
+    documents=pattern_texts,
+    metadatas=pattern_metadatas
+)
 
-print(f"\nDone! {len(all_entries)} entries stored in ChromaDB.")
+print(f"\nDone! Successfully ingested {len(patterns)} curated patterns into ChromaDB.")
+print("The model will now receive high-signal pattern guides instead of noisy problem statements.")

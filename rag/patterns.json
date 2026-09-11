@@ -57,6 +57,78 @@
   },
   {
     "id": "pattern-union-find",
-    "text": "Union Find Disjoint Set pattern: use for grouping elements into connected components. Maintain parent array. Find root with path compression. Union by rank. Problems: Number of Connected Components, Redundant Connection, Accounts Merge."
+    "text": "Union Find Disjoint Set pattern: use for grouping elements into connected components, detecting cycles in undirected graphs, or dynamic connectivity. Maintain parent array with path compression and union by rank. Problems: Number of Connected Components, Redundant Connection, Accounts Merge, Graph Valid Tree."
+  },
+  {
+    "id": "pattern-topological-sort",
+    "text": "Topological Sort pattern: use for directed acyclic graphs (DAGs) with dependencies or precedence constraints. Calculate in-degrees for Kahn's algorithm using a queue, or use DFS with visited state tracking (0=unvisited, 1=visiting, 2=visited) to detect cycles. Problems: Course Schedule I & II, Alien Dictionary, Sequence Reconstruction, Minimum Height Trees."
+  },
+  {
+    "id": "pattern-dijkstra-shortest-path",
+    "text": "Dijkstra's Algorithm pattern: use for finding single-source shortest path in graphs with non-negative edge weights. Maintain a min-heap of (cost, node) and a distance map. Greedily relax edges. Problems: Network Delay Time, Path with Minimum Effort, Cheapest Flights Within K Stops, Swim in Rising Water."
+  },
+  {
+    "id": "pattern-monotonic-queue",
+    "text": "Monotonic Queue / Deque pattern: use for sliding window problems where you need the minimum or maximum in O(1) amortized time per step. Store indices in a double-ended queue maintaining strictly increasing or decreasing order. Pop elements that slide out of window from the front and smaller/larger elements from the back. Problems: Sliding Window Maximum, Jump Game VI, Shortest Subarray with Sum at Least K."
+  },
+  {
+    "id": "pattern-segment-tree-fenwick",
+    "text": "Segment Tree and Fenwick Tree (Binary Indexed Tree) pattern: use when array values change dynamically and you need O(log N) point updates or range updates alongside range sum/min/max queries. Problems: Range Sum Query - Mutable, Count of Smaller Numbers After Self, Queue Reconstruction by Height."
+  },
+  {
+    "id": "pattern-bitmask-dp",
+    "text": "Bitmask Dynamic Programming pattern: use when N is small (N <= 20) and state can be represented as a bitmask of chosen/visited elements (mask & (1 << i)). Transition by trying next unvisited elements. Problems: Shortest Path Visiting All Nodes, Smallest Sufficient Team, Matchsticks to Square, Distribute Repeating Integers."
+  },
+  {
+    "id": "pattern-state-machine-dp",
+    "text": "State Machine Dynamic Programming pattern: use when actions at each step depend on finite internal states (e.g. holding stock, sold, cooldown, or odd/even parity). Maintain separate dp variables for each state and write mutual transitions. Problems: Best Time to Buy and Sell Stock with Cooldown/Transaction Fee, Paint Fence, House Robber III."
+  },
+  {
+    "id": "pattern-line-sweep",
+    "text": "Line Sweep and Coordinate Compression pattern: use for 2D interval or geometric problems. Sort events (starts as +1, ends as -1) along a 1D timeline or compress large sparse coordinates into continuous ranks. Problems: Meeting Rooms II, The Skyline Problem, Number of Flowers in Full Bloom, Employee Free Time."
+  },
+  {
+    "id": "pattern-grid-prob-dp",
+    "text": "Grid Probability and Multi-Step Transition DP pattern: use when finding probability or path count after K discrete moves on a 2D board. Define dp[step][r][c] as probability of reaching (r, c) after step moves. Transition by summing incoming probabilities from all valid moves divided by branching factor. Optimize space using two 2D grids (prev and curr). Problems: Knight Probability in Chessboard, Out of Boundary Paths, Dice Roll Simulation, Champagne Tower."
+  },
+  {
+    "id": "pattern-math-sieve",
+    "text": "Sieve of Eratosthenes and Prime Factorization pattern: use for prime counting or factor generation up to N. Create boolean array of size N initialized to prime (or notPrime). For each prime i starting from 2 up to sqrt(N), mark multiples j = i * i up to N as composite. Loop boundaries must strictly respect array size (i < N). Problems: Count Primes, Distinct Prime Factors of Product of Array, Prime Subtraction Operation."
+  },
+  {
+    "id": "pattern-tarjan-bridges",
+    "text": "Tarjan's Bridge and Articulation Points pattern: use for finding critical connections (bridges) or critical nodes in an undirected graph in O(V + E) time. Perform DFS maintaining discovery time disc[u] and lowest reachable ancestor low[u]. An undirected edge (u, v) is a critical connection if low[v] > disc[u]. Problems: Critical Connections in a Network, Minimum Number of Days to Disconnect Island."
+  },
+  {
+    "id": "pattern-greedy",
+    "text": "Greedy Algorithm pattern: use when a locally optimal choice can be proven to lead to a globally optimal solution. Sort or prioritize elements, make the best current choice, and avoid reconsidering it. Problems: Jump Game, Gas Station, Partition Labels, Assign Cookies, Task Scheduler."
+  },
+  {
+    "id": "pattern-prefix-sum",
+    "text": "Prefix Sum pattern: use when you need repeated range-sum or cumulative calculations. Precompute prefix[i] as the sum of elements before or through index i, allowing range sums to be answered in O(1). Problems: Range Sum Query, Subarray Sum Equals K, Contiguous Array, Product Except Self."
+  },
+  {
+    "id": "pattern-knapsack-dp",
+    "text": "Knapsack / Subset DP pattern: use when each item can be taken or skipped under a capacity, sum, or target constraint. Define DP around the current index and remaining capacity/target, with transitions for taking or skipping the item. Problems: 0/1 Knapsack, Partition Equal Subset Sum, Target Sum, Coin Change, Last Stone Weight II."
+  },
+  {
+    "id": "pattern-bipartite",
+    "text": "Bipartite Graph / Graph Coloring pattern: use when graph nodes must be divided into two groups such that no connected nodes belong to the same group. Use BFS or DFS with two colors and detect conflicts when adjacent nodes have the same color. Problems: Is Graph Bipartite?, Possible Bipartition."
+  },
+  {
+    "id": "pattern-divide-conquer",
+    "text": "Divide and Conquer pattern: divide a problem into smaller independent subproblems, solve them recursively, and combine their results. Problems: Merge Sort, Quick Sort, Maximum Subarray, Count of Smaller Numbers After Self."
+  },
+  {
+    "id": "pattern-two-heaps",
+    "text": "Two Heaps pattern: use when data needs to be divided into a lower half and an upper half while efficiently querying or maintaining the median. Maintain a max-heap for the smaller half and a min-heap for the larger half, keeping their sizes balanced. Problems: Find Median from Data Stream, Sliding Window Median."
+  },
+  {
+    "id": "pattern-bellman-ford",
+    "text": "Bellman-Ford / K-Edge Shortest Path pattern: use when edge weights may be negative or when the shortest path is constrained by a maximum number of edges. Repeatedly relax all edges for the required number of iterations. Problems: Cheapest Flights Within K Stops, Bellman-Ford, shortest paths with negative weights."
+  },
+  {
+    "id": "pattern-interval-dp",
+    "text": "Interval DP pattern: use when a subproblem is defined by an open range (i, j) solved by choosing which element k is processed LAST (reverse thinking). Pad boundaries with 1s at index 0 and n+1. Define dp[i][j] as max coins/cost bursting open interval between i and j. When k is the last balloon burst in (i, j), its neighbors are strictly nums[i] and nums[j], giving transition dp[i][j] = max(dp[i][k] + dp[k][j] + nums[i] * nums[k] * nums[j]) for i < k < j. Iterate by interval length from 1 to n. Problems: Burst Balloons, Minimum Cost to Cut a Stick, Strange Printer."
   }
 ]

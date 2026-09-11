@@ -7,6 +7,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       body: JSON.stringify({
         mode: msg.mode,
         hintLevel: msg.hintLevel,
+        previousHints: msg.previousHints,
+        consoleFeedback: msg.consoleFeedback,
+        testResult: msg.testResult,
         problem: msg.problem
       })
     })

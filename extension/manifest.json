@@ -15,6 +15,12 @@
   "content_scripts": [
     {
       "matches": ["https://leetcode.com/problems/*"],
+      "js": ["page-bridge.js"],
+      "world": "MAIN",
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://leetcode.com/problems/*"],
       "js": ["content.js"],
       "run_at": "document_idle"
     }

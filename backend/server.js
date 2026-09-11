@@ -1,4 +1,4 @@
-﻿const express = require('express')
+const express = require('express')
 const cors = require('cors')
 const axios = require('axios')
 
@@ -66,17 +66,21 @@ function looksLikeBugClaim(text) {
 
 function parseDebugResponse(raw) {
   const text = (raw || '').trim()
-  const verdict = /Verdict:\s*BUG_FOUND/i.test(text)
-    ? 'BUG_FOUND'
-    : (/Verdict:\s*NO_OBVIOUS_BUG/i.test(text) ? 'NO_OBVIOUS_BUG' : 'UNKNOWN')
 
-  const snippetMatch = text.match(/Snippet:\s*(.*)/i)
-  const reasonMatch = text.match(/Reason:\s*(.*)/i)
-  const testMatch = text.match(/Test:\s*(.*)/i)
+  const analysisMatch = text.match(/(?:^|\n)\*?\*?Analysis:\*?\*?\s*([\s\S]*?)(?=(?:\n\*?\*?Verdict:|$))/i)
+  const verdictMatch = text.match(/(?:^|\n)\*?\*?Verdict:\*?\*?\s*(BUG_FOUND|NO_OBVIOUS_BUG)/i)
+  const snippetMatch = text.match(/(?:^|\n)\*?\*?Snippet:\*?\*?\s*(.*?)(?=(?:\n\*?\*?Reason:|$))/i)
+  const reasonMatch = text.match(/(?:^|\n)\*?\*?Reason:\*?\*?\s*([\s\S]*?)(?=(?:\n\*?\*?Test:|$))/i)
+  const testMatch = text.match(/(?:^|\n)\*?\*?Test:\*?\*?\s*([\s\S]*)/i)
+
+  const verdict = verdictMatch?.[1]
+    ? verdictMatch[1].toUpperCase()
+    : (/BUG_FOUND/i.test(text) ? 'BUG_FOUND' : (/NO_OBVIOUS_BUG/i.test(text) ? 'NO_OBVIOUS_BUG' : 'UNKNOWN'))
 
   return {
+    analysis: (analysisMatch?.[1] || '').trim(),
     verdict,
-    snippet: (snippetMatch?.[1] || '').trim(),
+    snippet: (snippetMatch?.[1] || '').trim().replace(/^`+|`+$/g, ''),
     reason: (reasonMatch?.[1] || '').trim(),
     test: (testMatch?.[1] || '').trim(),
     raw: text
@@ -84,47 +88,34 @@ function parseDebugResponse(raw) {
 }
 
 function finalizeDebugResponse(raw, originalCode) {
-  const parsed = parseDebugResponse(raw)
-  const code = normalizeForMatch(originalCode)
-  const snippet = normalizeForMatch(parsed.snippet)
-  const snippetIsGrounded = snippet && snippet !== 'NA' && (
-    code.includes(snippet) || compactForMatch(code).includes(compactForMatch(snippet))
-  )
+  let text = (raw || '').trim()
 
-  if (parsed.verdict === 'BUG_FOUND' && snippetIsGrounded) {
-    const reason = parsed.reason || 'Likely logic bug around the snippet.'
-    const test = parsed.test || 'Try a boundary input to verify this path.'
-    return `Possible bug near: ${parsed.snippet}\nWhy: ${reason}\nCheck with: ${test}`
+  const isBug = /Verdict:\s*BUG_FOUND|\bBUG_FOUND\b/i.test(text)
+  const isSound = /Verdict:\s*NO_BUG|\bNO_BUG\b/i.test(text)
+
+  text = text.replace(/^RESPONSE:\s*/i, '').trim()
+
+  if (isBug) {
+    if (!text.includes('⚠️')) {
+      text = text.replace(/Verdict:\s*BUG_FOUND\s*/i, '⚠️ **Issue Detected**\n\n')
+    }
+  } else if (isSound) {
+    if (!text.includes('✅')) {
+      text = text.replace(/Verdict:\s*NO_BUG\s*/i, '✅ **Logic Looks Solid!**\n\n')
+    }
   }
 
-  
-  if (parsed.verdict === 'BUG_FOUND' && (looksLikeBugClaim(parsed.reason) || looksLikeBugClaim(parsed.raw))) {
-    const fallbackSnippet = (parsed.snippet && parsed.snippet !== 'NA') ? parsed.snippet : 'the loop/condition logic'
-    const reason = parsed.reason || 'Likely logic issue in the current approach.'
-    const test = parsed.test || 'Try a small edge case and trace pointer/index updates.'
-    return `Possible bug near: ${fallbackSnippet}\nWhy: ${reason}\nCheck with: ${test}`
-  }
-
-  
-  if (parsed.verdict === 'UNKNOWN' && looksLikeBugClaim(parsed.raw)) {
-    const firstLine = parsed.raw.split(/\r?\n/).find((line) => line.trim()) || 'Potential logic issue found.'
-    return `Possible bug near: the current implementation\nWhy: ${firstLine.trim()}\nCheck with: Try one minimal edge case and one boundary case.`
-  }
-
-  const safeTest = parsed.test || 'Try edge cases like smallest input, max input, and repeated values.'
-  return `No obvious bug found in current attempt. ${safeTest}`
+  return text
 }
 
-function buildPrompt(mode, problem, hintLevel, context) {
-  const solvedTag = problem.solved ? 'yes' : 'no'
+function buildPrompt(mode, problem, hintLevel, context, previousHints = {}, consoleFeedback = null) {
   const codeForPrompt = mode === 'debug'
     ? stripCommentsForPrompt(problem.code, problem.language)
     : (problem.code || '')
   const base = `
 Problem: ${problem.title} (${problem.difficulty})
 Language: ${problem.language}
-Problem solved/accepted in UI: ${solvedTag}
-Problem statement: ${problem.description}
+Problem Statement: ${problem.description}
 User's current code:
 ${codeForPrompt}
   `.trim()
@@ -135,43 +126,109 @@ ${context}
 ----------------------------
 ` : ''
 
+  let previousHintsSection = ''
+  if (mode === 'hint' && previousHints && Object.keys(previousHints).length > 0) {
+    const lines = Object.entries(previousHints)
+      .filter(([lvl, txt]) => Number(lvl) < hintLevel && txt)
+      .map(([lvl, txt]) => `Level ${lvl} Hint: ${txt}`)
+    if (lines.length > 0) {
+      previousHintsSection = `
+--- Previously revealed hints ---
+${lines.join('\n\n')}
+---------------------------------
+`
+    }
+  }
+
   switch (mode) {
     case 'hint':
       const levelInstructions = {
-        1: `ONE sentence only. Max 8 words. Just name the pattern or data structure.`,
-        2: `Elaborate on hint 1. Explain WHY this pattern works for this problem. 2-3 sentences. No pseudocode, no code.`,
-        3: `Build on hint 2. Give 3-4 numbered pseudocode steps showing HOW to implement the approach. No actual code syntax.`,
-        4: `Give the most specific and targeted hint possible. Point out the exact key step or condition that makes this problem click — the "aha moment". Be very precise. Do NOT give pseudocode or code. 2-3 sentences max.`
+        1: `State the general topic and why the naive/brute-force approach is too slow. 1-2 sentences max (under 25 words). Do NOT mention the optimal algorithm, data structure, or solution.`,
+        2: `Ask a short, thought-provoking guiding question about the subproblem or bottleneck. 1-2 sentences max. Socratic prompt only. Do NOT give steps, pseudocode, or algorithm names.`,
+        3: `Point the user toward the optimal concept or data structure in 1-2 sentences as a guiding clue (e.g. "Can we eliminate composites by pre-marking multiples?" or "Could a hash map provide O(1) complement lookups?").\nCRITICAL: Do NOT explain how the algorithm works step-by-step. Do NOT provide numbered steps (NO 1, 2, 3). Do NOT provide pseudocode or implementation recipes. Full algorithm walkthroughs are strictly reserved for the Explain feature.`
       }
-      return `DSA mentor. No full solutions. No filler. Just the hint.
+      return `You are a Socratic DSA mentor giving hints. You NEVER reveal the solution or step-by-step algorithm in hints.
+
+Strict Rules:
+- NEVER give step-by-step numbered instructions (NO 1., 2., 3.).
+- NEVER give pseudocode, code, or implementation algorithms.
+- Maximum 2 sentences total.
+- Keep it concise, Socratic, and focused on sparking an "aha" moment.
 
 ${ragSection}
 ${base}
+${previousHintsSection}
+Level ${hintLevel} instruction: ${levelInstructions[hintLevel] || levelInstructions[1]}
 
-Level ${hintLevel} hint: ${levelInstructions[hintLevel]}
-
-HINT:`
+Concise 1-2 sentence hint:`
 
     case 'debug':
-      return `DSA mentor helping debug.
-
+      if (consoleFeedback && consoleFeedback.type === 'ERROR') {
+        return `You are an expert DSA mentor diagnosing an active execution error from LeetCode.
 ${base}
 
-Rules:
-- Ground your answer in the provided code only.
-- Use the FULL problem statement and FULL user code context.
-- Quote the exact code snippet that is suspicious.
-- Mention where the issue is (loop/condition/return block) in plain words.
-- If there is a likely bug, explain why it fails on a concrete input.
-- If no obvious bug, mark verdict as NO_OBVIOUS_BUG.
-- Do NOT provide full corrected code.
-- Keep it concise.
+LeetCode Console Error:
+${consoleFeedback.details}
 
-Respond in EXACT format:
-Verdict: BUG_FOUND or NO_OBVIOUS_BUG
-Snippet: <exact code snippet from user code, or NA>
-Reason: <one short sentence>
-Test: <one short test input or edge-case question>
+Instructions:
+1. Explain clearly in 1-2 sentences why this error happened and pinpoint the exact line in the user's code causing it.
+2. State the fix directly without rewriting the full code solution.
+
+RESPONSE:
+⚠️ **Runtime Error Detected**
+`
+      }
+
+      if (consoleFeedback && consoleFeedback.type === 'WRONG_ANSWER') {
+        return `You are an expert DSA mentor diagnosing an active test failure from LeetCode.
+${base}
+
+LeetCode Failing Test Case:
+- Input: ${consoleFeedback.input || 'sample test'}
+- Actual Output: ${consoleFeedback.output || 'wrong output'}
+- Expected Output: ${consoleFeedback.expected || 'expected output'}
+
+Instructions:
+1. Explain in 1-2 sentences why the code returned "${consoleFeedback.output}" instead of "${consoleFeedback.expected}" on input "${consoleFeedback.input}".
+2. Pinpoint the exact line or variable causing this failure and explain how to fix it.
+
+RESPONSE:
+⚠️ **Failing Test Case**
+`
+      }
+
+      return `You are a strict DSA code linter and debugger.
+Problem: ${problem.title} (${problem.difficulty})
+Language: ${problem.language}
+Problem Statement: ${problem.description}
+User's current code:
+${codeForPrompt}
+
+${ragSection}
+
+TASK:
+Examine the user's code line-by-line for syntax errors, boundary bugs, array bounds violations, or logic errors.
+
+AUDIT CHECKLIST (Inspect before making any verdict):
+1. Array bounds & sizing:
+   - Check every array allocation (e.g. new Type[N]). Valid indices are 0 to N - 1.
+   - Check loop boundaries: does any loop index accessing an array iterate up to <= N instead of < N?
+     If i <= n is used when indexing an array of size n, it WILL throw ArrayIndexOutOfBoundsException when i == n!
+2. Problem constraints:
+   - Does the loop check boundaries matching "strictly less than n" or off-by-one?
+3. Uninitialized or incorrectly initialized variables.
+4. If ANY bug, bounds crash, or logic flaw is found:
+   - Verdict MUST be: BUG_FOUND
+   - Quote the offending line and explain why it fails.
+   - State the concise fix.
+5. If and only if all array bounds, loops, and logic are completely free of bugs:
+   - Verdict: NO_BUG
+   - State in 1-2 sentences why the implementation is sound.
+
+Format:
+Verdict: BUG_FOUND (or NO_BUG)
+Explanation: <1-2 sentences pinpointing the exact line and issue, or stating why logic is sound>
+Fix: <exact line change needed, or none if NO_BUG>
 
 RESPONSE:`
 
@@ -249,26 +306,80 @@ function hasMeaningfulAttempt(problem) {
   return meaningfulLines.length >= 2 || denseText.length >= 18
 }
 
+function checkSyntaxPitfalls(code, language) {
+  const lang = (language || '').toLowerCase()
+  const src = code || ''
+
+  if (lang.includes('java') || lang.includes('cpp') || lang.includes('c') || lang.includes('javascript') || lang.includes('typescript')) {
+    // 1. Stray dot before semicolon: e.g. "count.;"
+    const dotSemiMatch = src.match(/([a-zA-Z0-9_]+)\s*\.\s*;/m)
+    if (dotSemiMatch) {
+      return `⚠️ **Syntax Error Detected**\n\nStray period \`.\` before semicolon in \`${dotSemiMatch[0]}\`.\n\n**Fix:** Change \`${dotSemiMatch[0]}\` to \`${dotSemiMatch[1]};\`.`
+    }
+
+    // 2. Missing semicolon on return: e.g. "return count\n"
+    const missingSemiMatch = src.match(/return\s+([a-zA-Z0-9_]+)\s*(?=\r?\n\s*\}|$)/m)
+    if (missingSemiMatch) {
+      const fullLine = src.match(new RegExp(`return\\s+${missingSemiMatch[1]}\\s*([^;\\r\\n]*)`, 'm'))
+      if (fullLine && !fullLine[0].includes(';')) {
+        return `⚠️ **Syntax Error Detected**\n\nMissing semicolon \`;\` on return statement: \`${fullLine[0].trim()}\`.\n\n**Fix:** Change to \`return ${missingSemiMatch[1]};\`.`
+      }
+    }
+
+    // 3. Mismatched curly braces
+    const openBraces = (src.match(/\{/g) || []).length
+    const closeBraces = (src.match(/\}/g) || []).length
+    if (openBraces !== closeBraces) {
+      return `⚠️ **Syntax Error Detected**\n\nMismatched curly braces in your code (${openBraces} opening \`{\` vs ${closeBraces} closing \`}\`).`
+    }
+  }
+
+  return null
+}
+
 app.post('/api/ask', async (req, res) => {
-  const { mode, hintLevel, problem } = req.body
-  const effectiveHintLevel = (mode === 'hint' && hintLevel === 3) ? 4 : hintLevel
+  const { mode, hintLevel = 1, problem, previousHints = {}, consoleFeedback } = req.body
+  const safeHintLevel = Math.min(Math.max(parseInt(hintLevel, 10) || 1, 1), 3)
 
-  console.log(`[${mode.toUpperCase()}] ${problem.title} — level ${effectiveHintLevel}`)
+  console.log(`[${mode.toUpperCase()}] ${problem?.title || 'Unknown'} — level ${safeHintLevel} (code: ${problem?.code?.length || 0} chars)${consoleFeedback ? ` (ConsoleFeedback: ${consoleFeedback.type})` : ''}`)
+  if (consoleFeedback) {
+    console.log('[DEBUG CONSOLE FEEDBACK]:', consoleFeedback.details ? consoleFeedback.details.slice(0, 150) : consoleFeedback)
+  }
+  if (mode === 'debug') {
+    console.log('--- USER CODE RECEIVED ---')
+    console.log(problem?.code)
+    console.log('---------------------------')
+  }
 
-  if (mode === 'debug' && !hasMeaningfulAttempt(problem)) {
-    return res.json({
-      result: 'I cannot debug yet. Write a first attempt, then click Debug again.'
-    })
+  if (!problem) {
+    return res.status(400).json({ result: 'Missing problem data.' })
+  }
+
+  if (mode === 'debug') {
+    if (!hasMeaningfulAttempt(problem)) {
+      return res.json({
+        result: 'I cannot debug yet. Write a first attempt, then click Debug again.'
+      })
+    }
+    const syntaxErr = checkSyntaxPitfalls(problem.code, problem.language)
+    if (syntaxErr) {
+      console.log('[DEBUG] Syntax pitfall caught:\n', syntaxErr)
+      return res.json({ result: syntaxErr })
+    }
   }
 
   const context = await getRAGContext(problem)
   if (context) console.log('RAG context retrieved ✓')
 
-  const prompt = buildPrompt(mode, problem, effectiveHintLevel, context)
+  const prompt = buildPrompt(mode, problem, safeHintLevel, context, previousHints, consoleFeedback)
 
-  const maxTokens = mode === 'debug'
-    ? 260
-    : ((mode === 'explain' || mode === 'complexity') ? 250 : 80)
+  const tokenLimits = {
+    hint: 95,
+    debug: 500,
+    explain: 700,
+    complexity: 200
+  }
+  const maxTokens = tokenLimits[mode] || 250
 
   try {
     const response = await axios.post('http://localhost:11434/api/generate', {
@@ -280,13 +391,15 @@ app.post('/api/ask', async (req, res) => {
       options: {
         temperature: 0.1,
         num_predict: maxTokens,
-        stop: ["\n\n\n", "Note:", "Example:", "Here is"]
+        stop: ["\n\n\n\n", "User:", "Human:"]
       }
     }, { timeout: 60000 })
 
     const rawResult = response.data.response || ''
     if (mode === 'debug') {
-      return res.json({ result: finalizeDebugResponse(rawResult, problem.code || '') })
+      const finalResult = finalizeDebugResponse(rawResult, problem.code || '')
+      console.log('[DEBUG FINAL RESULT]:\n', finalResult)
+      return res.json({ result: finalResult })
     }
 
     res.json({ result: rawResult })
