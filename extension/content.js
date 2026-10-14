@@ -27,6 +27,15 @@ function getDifficulty() {
   ).trim()
 }
 
+function getProblemTopics() {
+  const topics = []
+  document.querySelectorAll('a[href*="/tag/"]').forEach(a => {
+    const t = a.innerText?.trim()
+    if (t && !topics.includes(t)) topics.push(t)
+  })
+  return topics
+}
+
 async function getUserCodeAsync() {
   // 1. First try communicating with page-bridge.js (running in page context)
   const codeFromBridge = await new Promise((resolve) => {
@@ -573,9 +582,18 @@ function injectPanel() {
   panel.classList.add('minimized')
 
   if (window.DSAMentorAnalytics) {
-    window.DSAMentorAnalytics.getStoredStats().then(stats => {
+    const title = getProblemTitle()
+    const desc = getProblemDescription()
+    const diff = getDifficulty()
+    const topics = getProblemTopics()
+    window.DSAMentorAnalytics.recordProblemVisit({
+      problemTitle: title,
+      difficulty: diff,
+      description: desc,
+      topics
+    }).then(({ stats }) => {
       updateStreakUI(stats.streakDays)
-    }).catch(() => {})
+    }).catch(console.error)
   }
 }
 
@@ -804,6 +822,7 @@ async function requestAI(mode, hintLevel = 1) {
             problemTitle: problem.title,
             difficulty: problem.difficulty,
             description: problem.description,
+            topics: getProblemTopics(),
             mode,
             hintLevel
           }).then(({ stats, newlyUnlocked }) => {

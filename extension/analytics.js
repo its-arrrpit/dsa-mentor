@@ -132,13 +132,64 @@ function saveStoredStats(stats) {
   })
 }
 
-async function recordInteraction({ problemTitle, difficulty, description, mode, hintLevel }) {
+function resolveTopicName(title, description, topics = []) {
+  if (Array.isArray(topics) && topics.length > 0) {
+    const prominent = ['Two Pointers', 'Sliding Window', 'Dynamic Programming', 'Binary Search', 'Trees & BST', 'Tree', 'Graph', 'Graphs', 'Stack', 'Heap', 'Linked List', 'Hash Table', 'Array']
+    const match = prominent.find(p => topics.some(t => t.toLowerCase().includes(p.toLowerCase())))
+    if (match) return match === 'Tree' ? 'Trees & BST' : (match === 'Graph' ? 'Graphs' : match)
+    return topics[0]
+  }
+  return detectTopicFromProblem(title, description)
+}
+
+async function recordProblemVisit({ problemTitle, difficulty, description, topics = [] }) {
   const stats = await getStoredStats()
   const today = getTodayDateString()
   updateStreakDays(stats)
 
   const title = (problemTitle || 'Unknown Problem').trim()
-  const topic = detectTopicFromProblem(title, description)
+  if (!title || title === 'Unknown Problem') return { stats }
+
+  const topic = resolveTopicName(title, description, topics)
+
+  if (!stats.problems[title]) {
+    stats.problems[title] = {
+      title,
+      difficulty: difficulty || 'Unknown',
+      topic,
+      firstSeen: today,
+      lastSeen: today,
+      maxHintLevel: 0,
+      hintsCount: 0,
+      debugCount: 0,
+      explainUsed: false
+    }
+    stats.totalProblemsPracticed++
+
+    if (!stats.topics[topic]) {
+      stats.topics[topic] = { attempts: 0, hints: 0, debugs: 0 }
+    }
+    stats.topics[topic].attempts++
+  } else {
+    stats.problems[title].lastSeen = today
+  }
+
+  // 1. First Step unlock
+  if (stats.totalProblemsPracticed >= 1 && !stats.unlockedBadgeIds.includes('first_step')) {
+    stats.unlockedBadgeIds.push('first_step')
+  }
+
+  await saveStoredStats(stats)
+  return { stats }
+}
+
+async function recordInteraction({ problemTitle, difficulty, description, topics = [], mode, hintLevel }) {
+  const stats = await getStoredStats()
+  const today = getTodayDateString()
+  updateStreakDays(stats)
+
+  const title = (problemTitle || 'Unknown Problem').trim()
+  const topic = resolveTopicName(title, description, topics)
 
   // Track problem record
   if (!stats.problems[title]) {
@@ -154,18 +205,21 @@ async function recordInteraction({ problemTitle, difficulty, description, mode, 
       explainUsed: false
     }
     stats.totalProblemsPracticed++
+
+    if (!stats.topics[topic]) {
+      stats.topics[topic] = { attempts: 0, hints: 0, debugs: 0 }
+    }
+    stats.topics[topic].attempts++
   }
 
   const prob = stats.problems[title]
   prob.lastSeen = today
 
-  // Track topic record
   if (!stats.topics[topic]) {
-    stats.topics[topic] = { attempts: 0, hints: 0, debugs: 0 }
+    stats.topics[topic] = { attempts: 1, hints: 0, debugs: 0 }
   }
-  stats.topics[topic].attempts++
 
-  // Update mode-specific stats
+  // Update mode-specific stats (hints increment hints, NOT attempts)
   if (mode === 'hint') {
     stats.totalHintsRequested++
     const lvl = String(hintLevel || 1)
@@ -227,6 +281,7 @@ if (typeof window !== 'undefined') {
     DEFAULT_STATS,
     getStoredStats,
     saveStoredStats,
+    recordProblemVisit,
     recordInteraction,
     detectTopicFromProblem
   }
