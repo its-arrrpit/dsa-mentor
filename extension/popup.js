@@ -29,7 +29,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   const ollamaConfig = document.getElementById('ollama-config')
 
   const geminiApiKey = document.getElementById('geminiApiKey')
-  const geminiModel = document.getElementById('geminiModel')
   const toggleApiKey = document.getElementById('toggleApiKey')
 
   const ollamaUrl = document.getElementById('ollamaUrl')
@@ -81,49 +80,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   })
 
-  async function fetchAndPopulateModels(key, selectedModel) {
-    if (!key) return
-    try {
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`)
-      if (!res.ok) return
-      const data = await res.json()
-      const contentModels = (data.models || [])
-        .filter(m => Array.isArray(m.supportedGenerationMethods) && m.supportedGenerationMethods.includes('generateContent'))
-        .map(m => m.name.replace(/^models\//, ''))
-
-      if (contentModels.length > 0) {
-        const preferred = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-2.5-pro']
-        const ordered = [
-          ...preferred.filter(p => contentModels.includes(p)),
-          ...contentModels.filter(m => !preferred.includes(m))
-        ]
-
-        geminiModel.innerHTML = ''
-        ordered.forEach(m => {
-          const opt = document.createElement('option')
-          opt.value = m
-          let tag = ''
-          if (m === 'gemini-2.5-flash') tag = ' (Fast & Free Tier)'
-          else if (m === 'gemini-2.0-flash') tag = ' (Ultra Fast)'
-          else if (m === 'gemini-1.5-flash') tag = ' (Standard)'
-          else if (m.includes('pro')) tag = ' (Deep Reasoning)'
-          opt.textContent = m + tag
-          if (m === selectedModel || (!selectedModel && m === 'gemini-2.5-flash')) {
-            opt.selected = true
-          }
-          geminiModel.appendChild(opt)
-        })
-      }
-    } catch (e) {
-      // Ignore background fetch error
-    }
-  }
-
   // Load saved settings
   chrome.storage.local.get([
     'aiProvider',
     'geminiApiKey',
-    'geminiModel',
     'ollamaUrl',
     'ollamaModel',
     'autoFallback'
@@ -131,18 +91,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const provider = items.aiProvider || 'gemini'
     updateProviderUI(provider)
 
-    if (items.geminiApiKey) {
-      geminiApiKey.value = items.geminiApiKey
-      fetchAndPopulateModels(items.geminiApiKey, items.geminiModel)
-    }
-    if (items.geminiModel) {
-      for (let i = 0; i < geminiModel.options.length; i++) {
-        if (geminiModel.options[i].value === items.geminiModel) {
-          geminiModel.selectedIndex = i
-          break
-        }
-      }
-    }
+    if (items.geminiApiKey) geminiApiKey.value = items.geminiApiKey
     if (items.ollamaUrl) ollamaUrl.value = items.ollamaUrl
     if (items.ollamaModel) ollamaModel.value = items.ollamaModel
     if (typeof items.autoFallback === 'boolean') {
@@ -152,18 +101,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   })
 
-  geminiApiKey.addEventListener('blur', () => {
-    const key = geminiApiKey.value.trim()
-    if (key.length > 20) {
-      fetchAndPopulateModels(key, geminiModel.value)
-    }
-  })
-
   // Save Settings
   saveBtn.addEventListener('click', () => {
     const provider = radioGemini.checked ? 'gemini' : 'ollama'
     const key = geminiApiKey.value.trim()
-    const gModel = geminiModel.value
     const oUrl = ollamaUrl.value.trim() || 'http://localhost:11434'
     const oModel = ollamaModel.value.trim() || 'qwen2.5-coder:7b'
     const fallback = autoFallback.checked
@@ -176,7 +117,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     chrome.storage.local.set({
       aiProvider: provider,
       geminiApiKey: key,
-      geminiModel: gModel,
       ollamaUrl: oUrl,
       ollamaModel: oModel,
       autoFallback: fallback
@@ -188,41 +128,53 @@ document.addEventListener('DOMContentLoaded', async () => {
     })
   })
 
-  // Test Connection
+  // Test Connection with Auto Model Cascade
   testBtn.addEventListener('click', async () => {
     const provider = radioGemini.checked ? 'gemini' : 'ollama'
     hideStatus()
 
     if (provider === 'gemini') {
       const key = geminiApiKey.value.trim()
-      const model = geminiModel.value
       if (!key) {
         showStatus('Please enter your Gemini API Key first.', 'error')
         return
       }
 
-      showStatus(`Testing connection to Gemini (${model})...`, 'loading')
-      try {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`
-        const res = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: 'Ping' }] }],
-            generationConfig: { maxOutputTokens: 5 }
-          })
-        })
+      showStatus('Testing connection (auto-detecting best model)...', 'loading')
+      const cascadeModels = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash']
+      let connectedModel = null
+      let lastErr = ''
 
-        const data = await res.json()
-        if (res.ok) {
-          showStatus(`✓ Connected to ${model} successfully! (Latency OK)`, 'success')
-          fetchAndPopulateModels(key, model)
-        } else {
-          const err = data.error?.message || 'Invalid API key or model.'
-          showStatus(`❌ Gemini error: ${err}`, 'error')
+      for (const m of cascadeModels) {
+        try {
+          const url = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${key}`
+          const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: 'Ping' }] }],
+              generationConfig: { maxOutputTokens: 5 }
+            })
+          })
+          const data = await res.json()
+          if (res.ok) {
+            connectedModel = m
+            break
+          } else {
+            lastErr = data.error?.message || 'Model unavailable'
+            if (res.status === 400 && lastErr.toLowerCase().includes('api key')) {
+              break // invalid API key
+            }
+          }
+        } catch (e) {
+          lastErr = e.message
         }
-      } catch (err) {
-        showStatus(`❌ Network error: ${err.message}`, 'error')
+      }
+
+      if (connectedModel) {
+        showStatus(`✓ Connected to Gemini! (Best active model: ${connectedModel})`, 'success')
+      } else {
+        showStatus(`❌ Gemini error: ${lastErr}`, 'error')
       }
     } else {
       const url = ollamaUrl.value.trim() || 'http://localhost:11434'
