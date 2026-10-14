@@ -103,24 +103,26 @@ graph TB
 
 ---
 
-### Step 1: Download & Load the Local AI Model (Ollama)
+### Step 1: Choose Your AI Engine (Hybrid: Cloud vs Local)
 
-This project runs 100% locally using **Ollama** so your LeetCode code is never sent to third-party cloud servers.
+DSA Mentor supports **both** cloud inference and local offline models:
 
-1. **Install Ollama** from [ollama.com](https://ollama.com/download) (Windows / macOS / Linux).
-2. **Pull the default coding model** (`qwen2.5-coder:7b`):
+#### Option A: ⚡ Google Gemini Cloud (Recommended — Fast & Free)
+* **Zero hardware requirements:** Works on any laptop without heavy downloads or GPUs.
+* **Instant latency:** Answers in ~1 second.
+* **Free tier:** 15 requests/min, 1,500 requests/day.
+1. Get a free API key at [Google AI Studio](https://aistudio.google.com/app/apikey).
+2. Click the **DSA Mentor icon** in your Chrome toolbar.
+3. Select **⚡ Gemini**, paste your key, and click **Save Settings**.
+
+#### Option B: 🖥️ Ollama Local (100% Private & Offline)
+* **Complete privacy:** Your code never leaves your local machine.
+1. **Install Ollama** from [ollama.com](https://ollama.com/download).
+2. **Pull the coding model**:
    ```bash
    ollama pull qwen2.5-coder:7b
    ```
-   *(Alternative supported models: `ollama pull deepseek-coder:6.7b` or `ollama pull llama3.1`)*
-3. **Verify the model is running**:
-   ```bash
-   ollama list
-   ```
-   Make sure the Ollama application / service is running in the background on port `11434`.
-
-> **Note on Model Configuration:**  
-> You can switch the active model at any time by editing the `model` field in [`backend/server.js`](./backend/server.js).
+3. Keep the Ollama service running on port `11434`.
 
 ---
 
@@ -148,6 +150,7 @@ npm start
 1. Open Google Chrome and go to `chrome://extensions/`.
 2. Enable **Developer mode** in the top-right corner.
 3. Click **Load unpacked** and select the [`extension/`](./extension) directory.
+4. Click the extension puzzle icon and pin **DSA Mentor**. Click it to configure Gemini or Ollama.
 
 ---
 
@@ -159,7 +162,7 @@ npm start
 ---
 
 ## 🔒 Design & Privacy Principles
-* **100% Local Inference:** Code snippets and user solutions are processed locally through Ollama and local ChromaDB — zero data is sent to external proprietary cloud APIs.
+* **Flexible Hybrid Architecture:** Users can choose 100% offline local inference via Ollama or ultra-fast cloud processing with their own Gemini API key (BYOK).
 * **Anti-Spoil Mentoring:** System prompts are strictly engineered to offer guided mental models and edge cases rather than spitting out complete copy-paste solutions.
 
 ---

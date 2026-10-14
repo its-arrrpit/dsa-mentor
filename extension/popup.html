@@ -1,7 +1,404 @@
 <!DOCTYPE html>
-<html>
-  <body style="width:200px; padding:12px; font-family:sans-serif;">
-    <h3 style="margin:0 0 8px">DSA Mentor</h3>
-    <p style="font-size:12px; color:#666;">Open any LeetCode problem to use the extension.</p>
-  </body>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>DSA Mentor Settings</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card-bg: #1e293b;
+      --card-border: #334155;
+      --primary: #6366f1;
+      --primary-hover: #4f46e5;
+      --primary-light: rgba(99, 102, 241, 0.15);
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --success: #10b981;
+      --danger: #ef4444;
+      --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      width: 360px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-family);
+      font-size: 13px;
+      line-height: 1.4;
+      padding: 16px;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    .header-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      color: #fff;
+    }
+
+    .logo-badge {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      background: linear-gradient(135deg, #6366f1, #a855f7);
+      border-radius: 6px;
+      font-size: 13px;
+    }
+
+    .version-tag {
+      font-size: 10px;
+      color: var(--text-muted);
+      background: var(--card-bg);
+      padding: 2px 6px;
+      border-radius: 999px;
+      border: 1px solid var(--card-border);
+    }
+
+    .section-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .provider-cards {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .provider-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      position: relative;
+    }
+
+    .provider-card:hover {
+      border-color: #64748b;
+      transform: translateY(-1px);
+    }
+
+    .provider-card.active {
+      border-color: var(--primary);
+      background: var(--primary-light);
+    }
+
+    .provider-card input[type="radio"] {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      accent-color: var(--primary);
+    }
+
+    .provider-name {
+      font-weight: 600;
+      font-size: 12px;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 3px;
+    }
+
+    .provider-desc {
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+
+    .badge-pill {
+      display: inline-block;
+      font-size: 9px;
+      font-weight: 600;
+      padding: 1px 5px;
+      border-radius: 4px;
+      margin-top: 4px;
+    }
+
+    .badge-gemini {
+      background: rgba(16, 185, 129, 0.2);
+      color: #34d399;
+    }
+
+    .badge-ollama {
+      background: rgba(148, 163, 184, 0.2);
+      color: #cbd5e1;
+    }
+
+    .form-group {
+      margin-bottom: 12px;
+    }
+
+    .form-label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 5px;
+    }
+
+    .form-label a {
+      color: #818cf8;
+      text-decoration: none;
+      font-size: 11px;
+    }
+
+    .form-label a:hover {
+      text-decoration: underline;
+    }
+
+    .input-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    input[type="text"],
+    input[type="password"],
+    select {
+      width: 100%;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 6px;
+      color: var(--text);
+      padding: 8px 10px;
+      font-size: 12px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input[type="text"]:focus,
+    input[type="password"]:focus,
+    select:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 1px var(--primary);
+    }
+
+    .toggle-visibility-btn {
+      position: absolute;
+      right: 8px;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 13px;
+      padding: 2px;
+    }
+
+    .toggle-visibility-btn:hover {
+      color: var(--text);
+    }
+
+    .checkbox-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 10px;
+      margin-bottom: 14px;
+      font-size: 12px;
+      color: var(--text-muted);
+      cursor: pointer;
+    }
+
+    .checkbox-group input {
+      accent-color: var(--primary);
+      cursor: pointer;
+    }
+
+    .action-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .btn {
+      flex: 1;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-hover);
+    }
+
+    .btn-secondary {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      color: var(--text-muted);
+    }
+
+    .btn-secondary:hover {
+      border-color: #64748b;
+      color: var(--text);
+    }
+
+    .status-banner {
+      display: none;
+      margin-top: 12px;
+      padding: 8px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      line-height: 1.4;
+      animation: fadeIn 0.2s ease-in;
+    }
+
+    .status-banner.success {
+      display: block;
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: #34d399;
+    }
+
+    .status-banner.error {
+      display: block;
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #f87171;
+    }
+
+    .status-banner.loading {
+      display: block;
+      background: rgba(99, 102, 241, 0.15);
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      color: #a5b4fc;
+    }
+
+    .footer {
+      margin-top: 14px;
+      font-size: 11px;
+      color: #64748b;
+      text-align: center;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-2px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="header-title">
+      <div class="logo-badge">⚡</div>
+      <span>DSA Mentor</span>
+    </div>
+    <span class="version-tag">Hybrid AI</span>
+  </div>
+
+  <div class="section-label">AI Engine</div>
+  <div class="provider-cards">
+    <div class="provider-card active" id="card-gemini">
+      <input type="radio" name="aiProvider" id="radio-gemini" value="gemini" checked>
+      <div class="provider-name">⚡ Gemini</div>
+      <div class="provider-desc">Cloud • Ultra Fast</div>
+      <span class="badge-pill badge-gemini">Free & Recommended</span>
+    </div>
+
+    <div class="provider-card" id="card-ollama">
+      <input type="radio" name="aiProvider" id="radio-ollama" value="ollama">
+      <div class="provider-name">🖥️ Ollama</div>
+      <div class="provider-desc">Local • Offline</div>
+      <span class="badge-pill badge-ollama">Requires RAM</span>
+    </div>
+  </div>
+
+  <!-- Gemini Configuration Form -->
+  <div id="gemini-config">
+    <div class="form-group">
+      <div class="form-label">
+        <span>Gemini API Key</span>
+        <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener">Get Free Key ↗</a>
+      </div>
+      <div class="input-wrapper">
+        <input type="password" id="geminiApiKey" placeholder="AIzaSy..." autocomplete="off">
+        <button type="button" class="toggle-visibility-btn" id="toggleApiKey" title="Show / Hide Key">👁️</button>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <div class="form-label">
+        <span>Gemini Model</span>
+      </div>
+      <select id="geminiModel">
+        <option value="gemini-1.5-flash" selected>gemini-1.5-flash (Fast & Free)</option>
+        <option value="gemini-2.0-flash">gemini-2.0-flash (Latest & Fast)</option>
+        <option value="gemini-1.5-pro">gemini-1.5-pro (Deep Reasoning)</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Ollama Configuration Form -->
+  <div id="ollama-config" style="display: none;">
+    <div class="form-group">
+      <div class="form-label">
+        <span>Ollama Server URL</span>
+      </div>
+      <input type="text" id="ollamaUrl" placeholder="http://localhost:11434" value="http://localhost:11434">
+    </div>
+
+    <div class="form-group">
+      <div class="form-label">
+        <span>Model Name</span>
+      </div>
+      <input type="text" id="ollamaModel" placeholder="qwen2.5-coder:7b" value="qwen2.5-coder:7b">
+    </div>
+  </div>
+
+  <label class="checkbox-group" id="fallback-wrapper">
+    <input type="checkbox" id="autoFallback" checked>
+    <span>Auto-fallback if primary provider is offline</span>
+  </label>
+
+  <div class="action-row">
+    <button type="button" class="btn btn-secondary" id="testBtn">Test Connection</button>
+    <button type="button" class="btn btn-primary" id="saveBtn">Save Settings</button>
+  </div>
+
+  <div class="status-banner" id="statusBanner"></div>
+
+  <div class="footer">
+    Open any LeetCode problem to use Hints & Debugging
+  </div>
+
+  <script src="popup.js"></script>
+</body>
 </html>

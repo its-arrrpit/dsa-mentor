@@ -10,7 +10,8 @@
   ],
   "host_permissions": [
     "https://leetcode.com/*",
-    "http://localhost:3000/*"
+    "http://localhost:3000/*",
+    "https://generativelanguage.googleapis.com/*"
   ],
   "content_scripts": [
     {
