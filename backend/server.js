@@ -401,14 +401,27 @@ async function callGemini({ prompt, apiKey, requestedModel, maxTokens = 2048 }) 
     throw new Error('Gemini API key is required.')
   }
 
-  const modelsToTry = requestedModel
-    ? [requestedModel, ...GEMINI_CANDIDATE_MODELS.filter(m => m !== requestedModel)]
-    : GEMINI_CANDIDATE_MODELS
+  let modelsToTry = requestedModel ? [requestedModel] : []
+  try {
+    const listRes = await axios.get(`https://generativelanguage.googleapis.com/v1beta/models?key=${cleanKey}`, { timeout: 10000 })
+    const valid = (listRes.data?.models || [])
+      .filter(m => Array.isArray(m.supportedGenerationMethods) && m.supportedGenerationMethods.includes('generateContent'))
+      .map(m => m.name.replace(/^models\//, ''))
+
+    if (valid.length > 0) {
+      const flashModels = valid.filter(m => m.includes('flash'))
+      const otherModels = valid.filter(m => !m.includes('flash'))
+      modelsToTry = [...new Set([...modelsToTry, ...flashModels, ...otherModels])]
+    }
+  } catch (listErr) {
+    console.log('[GEMINI] Could not list models, using fallback list:', listErr.message)
+    modelsToTry = [...new Set([...modelsToTry, ...GEMINI_CANDIDATE_MODELS])]
+  }
 
   let lastError = null
   for (const model of modelsToTry) {
     try {
-      console.log(`[GEMINI] Trying best model: ${model}...`)
+      console.log(`[GEMINI] Trying model: ${model}...`)
       const res = await callSingleGeminiModel({ prompt, apiKey: cleanKey, model, maxTokens })
       console.log(`[GEMINI] Model ${model} succeeded ✓`)
       return res
@@ -421,7 +434,6 @@ async function callGemini({ prompt, apiKey, requestedModel, maxTokens = 2048 }) 
       if (status === 400 && msg.toLowerCase().includes('api key')) {
         throw err
       }
-      // If model not found or unavailable, automatically cascade to the next model
       continue
     }
   }

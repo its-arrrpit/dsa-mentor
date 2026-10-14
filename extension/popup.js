@@ -140,45 +140,48 @@ document.addEventListener('DOMContentLoaded', async () => {
         return
       }
 
-      showStatus('Testing connection (auto-detecting best model)...', 'loading')
-      const cascadeModels = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash']
-      let connectedModel = null
-      let lastErr = ''
+      showStatus('Connecting to Google AI Studio...', 'loading')
+      try {
+        const listRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`)
+        const listData = await listRes.json()
 
-      for (const m of cascadeModels) {
-        try {
-          const url = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${key}`
-          const res = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{ parts: [{ text: 'Ping' }] }],
-              generationConfig: { maxOutputTokens: 5 }
-            })
-          })
-          const data = await res.json()
-          if (res.ok) {
-            connectedModel = m
-            break
-          } else {
-            lastErr = data.error?.message || 'Model unavailable'
-            if (res.status === 429 || lastErr.toLowerCase().includes('quota') || lastErr.toLowerCase().includes('rate')) {
-              lastErr = `⏳ Daily quota reached on this project (${lastErr})`
-              break
-            }
-            if (res.status === 400 && lastErr.toLowerCase().includes('api key')) {
-              break // invalid API key
-            }
-          }
-        } catch (e) {
-          lastErr = e.message
+        if (!listRes.ok) {
+          const err = listData.error?.message || 'Invalid API Key'
+          showStatus(`❌ Gemini error: ${err}`, 'error')
+          return
         }
-      }
 
-      if (connectedModel) {
-        showStatus(`✓ Connected to Gemini! (Best active model: ${connectedModel})`, 'success')
-      } else {
-        showStatus(`❌ Gemini error: ${lastErr}`, 'error')
+        const validModels = (listData.models || [])
+          .filter(m => Array.isArray(m.supportedGenerationMethods) && m.supportedGenerationMethods.includes('generateContent'))
+          .map(m => m.name.replace(/^models\//, ''))
+
+        if (validModels.length === 0) {
+          showStatus('❌ No text generation models available for this API key.', 'error')
+          return
+        }
+
+        let bestModel = validModels.find(m => m.includes('2.5-flash')) ||
+                         validModels.find(m => m.includes('2.0-flash')) ||
+                         validModels.find(m => m.includes('flash')) ||
+                         validModels[0]
+
+        const testRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${bestModel}:generateContent?key=${key}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: 'Ping' }] }],
+            generationConfig: { maxOutputTokens: 5 }
+          })
+        })
+
+        const testData = await testRes.json()
+        if (testRes.ok) {
+          showStatus(`✓ Connected to Gemini! (Active model: ${bestModel})`, 'success')
+        } else {
+          showStatus(`❌ Gemini error: ${testData.error?.message || 'Error generating content'}`, 'error')
+        }
+      } catch (err) {
+        showStatus(`❌ Network error: ${err.message}`, 'error')
       }
     } else {
       const url = ollamaUrl.value.trim() || 'http://localhost:11434'
