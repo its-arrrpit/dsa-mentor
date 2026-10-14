@@ -24,7 +24,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         body: JSON.stringify({
           provider,
           geminiApiKey,
-          geminiModel: settings.geminiModel || 'gemini-1.5-flash',
+          geminiModel: settings.geminiModel || 'gemini-2.5-flash',
           ollamaUrl: settings.ollamaUrl || 'http://localhost:11434',
           ollamaModel: settings.ollamaModel || 'qwen2.5-coder:7b',
           autoFallback: typeof settings.autoFallback === 'boolean' ? settings.autoFallback : true,

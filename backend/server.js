@@ -427,7 +427,7 @@ app.post('/api/ask', async (req, res) => {
   const {
     provider = 'gemini',
     geminiApiKey,
-    geminiModel = 'gemini-1.5-flash',
+    geminiModel = 'gemini-2.5-flash',
     ollamaUrl = 'http://localhost:11434',
     ollamaModel = 'qwen2.5-coder:7b',
     autoFallback = true,

@@ -60,6 +60,44 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   })
 
+  async function fetchAndPopulateModels(key, selectedModel) {
+    if (!key) return
+    try {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`)
+      if (!res.ok) return
+      const data = await res.json()
+      const contentModels = (data.models || [])
+        .filter(m => Array.isArray(m.supportedGenerationMethods) && m.supportedGenerationMethods.includes('generateContent'))
+        .map(m => m.name.replace(/^models\//, ''))
+
+      if (contentModels.length > 0) {
+        const preferred = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-2.5-pro']
+        const ordered = [
+          ...preferred.filter(p => contentModels.includes(p)),
+          ...contentModels.filter(m => !preferred.includes(m))
+        ]
+
+        geminiModel.innerHTML = ''
+        ordered.forEach(m => {
+          const opt = document.createElement('option')
+          opt.value = m
+          let tag = ''
+          if (m === 'gemini-2.5-flash') tag = ' (Recommended & Fast)'
+          else if (m === 'gemini-2.0-flash') tag = ' (Ultra Fast)'
+          else if (m === 'gemini-1.5-flash') tag = ' (Standard)'
+          else if (m.includes('pro')) tag = ' (Deep Reasoning)'
+          opt.textContent = m + tag
+          if (m === selectedModel || (!selectedModel && m === 'gemini-2.5-flash')) {
+            opt.selected = true
+          }
+          geminiModel.appendChild(opt)
+        })
+      }
+    } catch (e) {
+      // Ignore background fetch error
+    }
+  }
+
   // Load saved settings
   chrome.storage.local.get([
     'aiProvider',
@@ -72,14 +110,33 @@ document.addEventListener('DOMContentLoaded', () => {
     const provider = items.aiProvider || 'gemini'
     updateProviderUI(provider)
 
-    if (items.geminiApiKey) geminiApiKey.value = items.geminiApiKey
-    if (items.geminiModel) geminiModel.value = items.geminiModel
+    if (items.geminiApiKey) {
+      geminiApiKey.value = items.geminiApiKey
+      fetchAndPopulateModels(items.geminiApiKey, items.geminiModel)
+    }
+    if (items.geminiModel) {
+      // If the option already exists in HTML, select it
+      for (let i = 0; i < geminiModel.options.length; i++) {
+        if (geminiModel.options[i].value === items.geminiModel) {
+          geminiModel.selectedIndex = i
+          break
+        }
+      }
+    }
     if (items.ollamaUrl) ollamaUrl.value = items.ollamaUrl
     if (items.ollamaModel) ollamaModel.value = items.ollamaModel
     if (typeof items.autoFallback === 'boolean') {
       autoFallback.checked = items.autoFallback
     } else {
       autoFallback.checked = true
+    }
+  })
+
+  // Whenever user leaves or finishes typing the API key, auto-fetch models
+  geminiApiKey.addEventListener('blur', () => {
+    const key = geminiApiKey.value.trim()
+    if (key.length > 20) {
+      fetchAndPopulateModels(key, geminiModel.value)
     }
   })
 
@@ -125,7 +182,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return
       }
 
-      showStatus('Testing connection to Gemini...', 'loading')
+      showStatus(`Testing connection to Gemini (${model})...`, 'loading')
       try {
         const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`
         const res = await fetch(url, {
@@ -139,7 +196,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const data = await res.json()
         if (res.ok) {
-          showStatus('✓ Gemini connected successfully! (Latency OK)', 'success')
+          showStatus(`✓ Connected to ${model} successfully! (Latency OK)`, 'success')
+          // Also fetch available models in case they want to switch
+          fetchAndPopulateModels(key, model)
         } else {
           const err = data.error?.message || 'Invalid API key or model.'
           showStatus(`❌ Gemini error: ${err}`, 'error')
