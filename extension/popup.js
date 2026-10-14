@@ -162,6 +162,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             break
           } else {
             lastErr = data.error?.message || 'Model unavailable'
+            if (res.status === 429 || lastErr.toLowerCase().includes('quota') || lastErr.toLowerCase().includes('rate')) {
+              lastErr = `⏳ Daily quota reached on this project (${lastErr})`
+              break
+            }
             if (res.status === 400 && lastErr.toLowerCase().includes('api key')) {
               break // invalid API key
             }
