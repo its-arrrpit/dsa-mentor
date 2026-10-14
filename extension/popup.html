@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>DSA Mentor Settings</title>
+  <title>DSA Mentor AI</title>
   <style>
     :root {
       --bg: #0f172a;
@@ -15,6 +15,7 @@
       --text-muted: #94a3b8;
       --success: #10b981;
       --danger: #ef4444;
+      --warning: #f59e0b;
       --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     }
 
@@ -25,7 +26,9 @@
     }
 
     body {
-      width: 360px;
+      width: 380px;
+      max-height: 560px;
+      overflow-y: auto;
       background: var(--bg);
       color: var(--text);
       font-family: var(--font-family);
@@ -34,11 +37,16 @@
       padding: 16px;
     }
 
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 999px; }
+
     .header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 16px;
+      margin-bottom: 12px;
       padding-bottom: 12px;
       border-bottom: 1px solid var(--card-border);
     }
@@ -48,7 +56,7 @@
       align-items: center;
       gap: 8px;
       font-size: 15px;
-      font-weight: 600;
+      font-weight: 700;
       color: #fff;
     }
 
@@ -63,15 +71,72 @@
       font-size: 13px;
     }
 
-    .version-tag {
-      font-size: 10px;
-      color: var(--text-muted);
-      background: var(--card-bg);
-      padding: 2px 6px;
+    .header-streak {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      background: rgba(245, 158, 11, 0.15);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      color: #fbbf24;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
       border-radius: 999px;
-      border: 1px solid var(--card-border);
     }
 
+    /* Navigation Tabs */
+    .tab-bar {
+      display: flex;
+      gap: 4px;
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid var(--card-border);
+      padding: 3px;
+      border-radius: 8px;
+      margin-bottom: 14px;
+    }
+
+    .tab-btn {
+      flex: 1;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 11px;
+      font-weight: 600;
+      padding: 6px 4px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+    }
+
+    .tab-btn:hover {
+      color: var(--text);
+    }
+
+    .tab-btn.active {
+      background: var(--card-bg);
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+    }
+
+    .tab-pane {
+      display: none;
+      animation: tabFadeIn 0.2s ease-out;
+    }
+
+    .tab-pane.active {
+      display: block;
+    }
+
+    @keyframes tabFadeIn {
+      from { opacity: 0; transform: translateY(3px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Settings Tab Styles */
     .section-label {
       font-size: 11px;
       text-transform: uppercase;
@@ -85,7 +150,7 @@
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 8px;
-      margin-bottom: 16px;
+      margin-bottom: 14px;
     }
 
     .provider-card {
@@ -139,20 +204,10 @@
       margin-top: 4px;
     }
 
-    .badge-gemini {
-      background: rgba(16, 185, 129, 0.2);
-      color: #34d399;
-    }
+    .badge-gemini { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+    .badge-ollama { background: rgba(148, 163, 184, 0.2); color: #cbd5e1; }
 
-    .badge-ollama {
-      background: rgba(148, 163, 184, 0.2);
-      color: #cbd5e1;
-    }
-
-    .form-group {
-      margin-bottom: 12px;
-    }
-
+    .form-group { margin-bottom: 12px; }
     .form-label {
       display: flex;
       justify-content: space-between;
@@ -161,16 +216,8 @@
       color: var(--text-muted);
       margin-bottom: 5px;
     }
-
-    .form-label a {
-      color: #818cf8;
-      text-decoration: none;
-      font-size: 11px;
-    }
-
-    .form-label a:hover {
-      text-decoration: underline;
-    }
+    .form-label a { color: #818cf8; text-decoration: none; font-size: 11px; }
+    .form-label a:hover { text-decoration: underline; }
 
     .input-wrapper {
       position: relative;
@@ -210,10 +257,6 @@
       padding: 2px;
     }
 
-    .toggle-visibility-btn:hover {
-      color: var(--text);
-    }
-
     .checkbox-group {
       display: flex;
       align-items: center;
@@ -225,23 +268,14 @@
       cursor: pointer;
     }
 
-    .checkbox-group input {
-      accent-color: var(--primary);
-      cursor: pointer;
-    }
-
-    .action-row {
-      display: flex;
-      gap: 8px;
-      margin-top: 14px;
-    }
+    .action-row { display: flex; gap: 8px; margin-top: 12px; }
 
     .btn {
       flex: 1;
       padding: 8px 12px;
       border-radius: 6px;
       font-size: 12px;
-      font-weight: 500;
+      font-weight: 600;
       cursor: pointer;
       transition: all 0.2s;
       border: none;
@@ -251,25 +285,10 @@
       gap: 6px;
     }
 
-    .btn-primary {
-      background: var(--primary);
-      color: #fff;
-    }
-
-    .btn-primary:hover {
-      background: var(--primary-hover);
-    }
-
-    .btn-secondary {
-      background: var(--card-bg);
-      border: 1px solid var(--card-border);
-      color: var(--text-muted);
-    }
-
-    .btn-secondary:hover {
-      border-color: #64748b;
-      color: var(--text);
-    }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-secondary { background: var(--card-bg); border: 1px solid var(--card-border); color: var(--text-muted); }
+    .btn-secondary:hover { border-color: #64748b; color: var(--text); }
 
     .status-banner {
       display: none;
@@ -278,29 +297,183 @@
       border-radius: 6px;
       font-size: 11px;
       line-height: 1.4;
-      animation: fadeIn 0.2s ease-in;
+    }
+    .status-banner.success { display: block; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); color: #34d399; }
+    .status-banner.error { display: block; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); color: #f87171; }
+    .status-banner.loading { display: block; background: rgba(99, 102, 241, 0.15); border: 1px solid rgba(99, 102, 241, 0.3); color: #a5b4fc; }
+
+    /* Analytics Tab Styles */
+    .metric-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 14px;
     }
 
-    .status-banner.success {
-      display: block;
-      background: rgba(16, 185, 129, 0.15);
-      border: 1px solid rgba(16, 185, 129, 0.3);
-      color: #34d399;
+    .metric-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 10px;
     }
 
-    .status-banner.error {
-      display: block;
-      background: rgba(239, 68, 68, 0.15);
-      border: 1px solid rgba(239, 68, 68, 0.3);
-      color: #f87171;
+    .metric-value {
+      font-size: 18px;
+      font-weight: 700;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 6px;
     }
 
-    .status-banner.loading {
-      display: block;
-      background: rgba(99, 102, 241, 0.15);
-      border: 1px solid rgba(99, 102, 241, 0.3);
-      color: #a5b4fc;
+    .metric-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 2px;
     }
+
+    .card-box {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+
+    .card-box-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .bottleneck-bars {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .bar-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+    }
+
+    .bar-name { width: 90px; color: var(--text-muted); }
+    .bar-track { flex: 1; height: 6px; background: #334155; border-radius: 3px; overflow: hidden; }
+    .bar-fill { height: 100%; border-radius: 3px; }
+    .bar-count { width: 25px; text-align: right; color: #fff; font-weight: 600; }
+
+    .weakness-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-height: 140px;
+      overflow-y: auto;
+    }
+
+    .weakness-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(15, 23, 42, 0.4);
+      padding: 6px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+    }
+
+    .weakness-tag {
+      font-size: 9px;
+      font-weight: 600;
+      padding: 1px 6px;
+      border-radius: 4px;
+    }
+    .tag-struggle { background: rgba(239, 68, 68, 0.2); color: #f87171; }
+    .tag-moderate { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+    .tag-strong { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+
+    /* Achievements Tab Styles */
+    .streak-hero {
+      background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(239, 68, 68, 0.2));
+      border: 1px solid rgba(245, 158, 11, 0.35);
+      border-radius: 10px;
+      padding: 14px;
+      text-align: center;
+      margin-bottom: 14px;
+    }
+
+    .streak-hero-val {
+      font-size: 26px;
+      font-weight: 800;
+      color: #fbbf24;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .streak-hero-desc {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .badge-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      max-height: 320px;
+      overflow-y: auto;
+      padding-right: 2px;
+    }
+
+    .badge-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      position: relative;
+      transition: all 0.2s;
+    }
+
+    .badge-card.unlocked {
+      border-color: rgba(99, 102, 241, 0.5);
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(168, 85, 247, 0.1));
+    }
+
+    .badge-card.locked {
+      opacity: 0.55;
+      filter: grayscale(0.8);
+    }
+
+    .badge-card-header {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .badge-card-icon { font-size: 18px; }
+    .badge-card-name { font-size: 12px; font-weight: 600; color: #fff; }
+    .badge-card-desc { font-size: 10px; color: var(--text-muted); line-height: 1.3; }
+
+    .badge-status-pill {
+      font-size: 8px;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 1px 4px;
+      border-radius: 3px;
+      align-self: flex-start;
+      margin-top: 4px;
+    }
+    .badge-card.unlocked .badge-status-pill { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+    .badge-card.locked .badge-status-pill { background: rgba(148, 163, 184, 0.2); color: #94a3b8; }
 
     .footer {
       margin-top: 14px;
@@ -308,98 +481,179 @@
       color: #64748b;
       text-align: center;
     }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(-2px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
   </style>
 </head>
 <body>
   <div class="header">
     <div class="header-title">
       <div class="logo-badge">⚡</div>
-      <span>DSA Mentor</span>
+      <span>DSA Mentor AI</span>
     </div>
-    <span class="version-tag">Hybrid AI</span>
+    <div class="header-streak" id="headerStreak">🔥 1 Day</div>
   </div>
 
-  <div class="section-label">AI Engine</div>
-  <div class="provider-cards">
-    <div class="provider-card active" id="card-gemini">
-      <input type="radio" name="aiProvider" id="radio-gemini" value="gemini" checked>
-      <div class="provider-name">⚡ Gemini</div>
-      <div class="provider-desc">Cloud • Ultra Fast</div>
-      <span class="badge-pill badge-gemini">Free & Recommended</span>
-    </div>
-
-    <div class="provider-card" id="card-ollama">
-      <input type="radio" name="aiProvider" id="radio-ollama" value="ollama">
-      <div class="provider-name">🖥️ Ollama</div>
-      <div class="provider-desc">Local • Offline</div>
-      <span class="badge-pill badge-ollama">Requires RAM</span>
-    </div>
+  <!-- Tab Bar Navigation -->
+  <div class="tab-bar">
+    <button class="tab-btn active" data-tab="settings">⚙️ Engine</button>
+    <button class="tab-btn" data-tab="analytics">📊 Analytics</button>
+    <button class="tab-btn" data-tab="achievements">🏆 Badges</button>
   </div>
 
-  <!-- Gemini Configuration Form -->
-  <div id="gemini-config">
-    <div class="form-group">
-      <div class="form-label">
-        <span>Gemini API Key</span>
-        <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener">Get Free Key ↗</a>
+  <!-- TAB 1: SETTINGS -->
+  <div class="tab-pane active" id="pane-settings">
+    <div class="section-label">AI Engine Provider</div>
+    <div class="provider-cards">
+      <div class="provider-card active" id="card-gemini">
+        <input type="radio" name="aiProvider" id="radio-gemini" value="gemini" checked>
+        <div class="provider-name">⚡ Gemini</div>
+        <div class="provider-desc">Cloud • Ultra Fast</div>
+        <span class="badge-pill badge-gemini">Free & Recommended</span>
       </div>
-      <div class="input-wrapper">
-        <input type="password" id="geminiApiKey" placeholder="AIzaSy..." autocomplete="off">
-        <button type="button" class="toggle-visibility-btn" id="toggleApiKey" title="Show / Hide Key">👁️</button>
+
+      <div class="provider-card" id="card-ollama">
+        <input type="radio" name="aiProvider" id="radio-ollama" value="ollama">
+        <div class="provider-name">🖥️ Ollama</div>
+        <div class="provider-desc">Local • Offline</div>
+        <span class="badge-pill badge-ollama">Requires RAM</span>
       </div>
     </div>
 
-    <div class="form-group">
-      <div class="form-label">
-        <span>Gemini Model</span>
+    <!-- Gemini Form -->
+    <div id="gemini-config">
+      <div class="form-group">
+        <div class="form-label">
+          <span>Gemini API Key</span>
+          <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener">Get Free Key ↗</a>
+        </div>
+        <div class="input-wrapper">
+          <input type="password" id="geminiApiKey" placeholder="AIzaSy..." autocomplete="off">
+          <button type="button" class="toggle-visibility-btn" id="toggleApiKey" title="Show / Hide Key">👁️</button>
+        </div>
       </div>
-      <select id="geminiModel">
-        <option value="gemini-2.5-flash" selected>gemini-2.5-flash (Fast & Free Tier)</option>
-        <option value="gemini-2.0-flash">gemini-2.0-flash (Ultra Fast)</option>
-        <option value="gemini-1.5-flash">gemini-1.5-flash (Standard)</option>
-        <option value="gemini-2.5-pro">gemini-2.5-pro (Deep Reasoning)</option>
-      </select>
+
+      <div class="form-group">
+        <div class="form-label">
+          <span>Gemini Model</span>
+        </div>
+        <select id="geminiModel">
+          <option value="gemini-2.5-flash" selected>gemini-2.5-flash (Fast & Free Tier)</option>
+          <option value="gemini-2.0-flash">gemini-2.0-flash (Ultra Fast)</option>
+          <option value="gemini-1.5-flash">gemini-1.5-flash (Standard)</option>
+          <option value="gemini-2.5-pro">gemini-2.5-pro (Deep Reasoning)</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Ollama Form -->
+    <div id="ollama-config" style="display: none;">
+      <div class="form-group">
+        <div class="form-label">
+          <span>Ollama Server URL</span>
+        </div>
+        <input type="text" id="ollamaUrl" placeholder="http://localhost:11434" value="http://localhost:11434">
+      </div>
+
+      <div class="form-group">
+        <div class="form-label">
+          <span>Model Name</span>
+        </div>
+        <input type="text" id="ollamaModel" placeholder="qwen2.5-coder:7b" value="qwen2.5-coder:7b">
+      </div>
+    </div>
+
+    <label class="checkbox-group" id="fallback-wrapper">
+      <input type="checkbox" id="autoFallback" checked>
+      <span>Auto-fallback if primary provider is offline</span>
+    </label>
+
+    <div class="action-row">
+      <button type="button" class="btn btn-secondary" id="testBtn">Test Connection</button>
+      <button type="button" class="btn btn-primary" id="saveBtn">Save Settings</button>
+    </div>
+
+    <div class="status-banner" id="statusBanner"></div>
+  </div>
+
+  <!-- TAB 2: ANALYTICS & WEAKNESSES -->
+  <div class="tab-pane" id="pane-analytics">
+    <div class="metric-grid">
+      <div class="metric-card">
+        <div class="metric-value" id="statProblems">0</div>
+        <div class="metric-label">Problems Practiced</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-value" id="statHints">0</div>
+        <div class="metric-label">Hints Requested</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-value" id="statDebugs">0</div>
+        <div class="metric-label">Debugger Audits</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-value" id="statIndependence">100%</div>
+        <div class="metric-label">Self-Reliance Index</div>
+      </div>
+    </div>
+
+    <!-- Cognitive Bottleneck Breakdown -->
+    <div class="card-box">
+      <div class="card-box-title">
+        <span>Cognitive Bottleneck Breakdown</span>
+      </div>
+      <div class="bottleneck-bars">
+        <div class="bar-row">
+          <span class="bar-name">Level 1 (Topic)</span>
+          <div class="bar-track"><div class="bar-fill" id="barLvl1" style="width:0%; background:#60a5fa;"></div></div>
+          <span class="bar-count" id="countLvl1">0</span>
+        </div>
+        <div class="bar-row">
+          <span class="bar-name">Level 2 (Logic)</span>
+          <div class="bar-track"><div class="bar-fill" id="barLvl2" style="width:0%; background:#f59e0b;"></div></div>
+          <span class="bar-count" id="countLvl2">0</span>
+        </div>
+        <div class="bar-row">
+          <span class="bar-name">Level 3 (Structure)</span>
+          <div class="bar-track"><div class="bar-fill" id="barLvl3" style="width:0%; background:#ef4444;"></div></div>
+          <span class="bar-count" id="countLvl3">0</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Topic Weakness Diagnostics -->
+    <div class="card-box">
+      <div class="card-box-title">
+        <span>Topic Weakness Diagnostics</span>
+      </div>
+      <div class="weakness-list" id="weaknessList">
+        <div style="font-size:11px; color:#64748b; text-align:center; padding:10px;">
+          Practice problems on LeetCode to populate weakness diagnostics.
+        </div>
+      </div>
     </div>
   </div>
 
-  <!-- Ollama Configuration Form -->
-  <div id="ollama-config" style="display: none;">
-    <div class="form-group">
-      <div class="form-label">
-        <span>Ollama Server URL</span>
-      </div>
-      <input type="text" id="ollamaUrl" placeholder="http://localhost:11434" value="http://localhost:11434">
+  <!-- TAB 3: ACHIEVEMENTS & BADGES -->
+  <div class="tab-pane" id="pane-achievements">
+    <div class="streak-hero">
+      <div class="streak-hero-val" id="achieveStreak">🔥 1 Day</div>
+      <div class="streak-hero-desc">Consistency Streak • Keep solving to level up!</div>
     </div>
 
-    <div class="form-group">
-      <div class="form-label">
-        <span>Model Name</span>
-      </div>
-      <input type="text" id="ollamaModel" placeholder="qwen2.5-coder:7b" value="qwen2.5-coder:7b">
+    <div class="section-label" style="display:flex; justify-content:space-between;">
+      <span>Badges & Milestones</span>
+      <span id="badgeCounter" style="color:#818cf8;">0 / 8 Unlocked</span>
+    </div>
+
+    <div class="badge-grid" id="badgeGrid">
+      <!-- Populated dynamically by popup.js -->
     </div>
   </div>
-
-  <label class="checkbox-group" id="fallback-wrapper">
-    <input type="checkbox" id="autoFallback" checked>
-    <span>Auto-fallback if primary provider is offline</span>
-  </label>
-
-  <div class="action-row">
-    <button type="button" class="btn btn-secondary" id="testBtn">Test Connection</button>
-    <button type="button" class="btn btn-primary" id="saveBtn">Save Settings</button>
-  </div>
-
-  <div class="status-banner" id="statusBanner"></div>
 
   <div class="footer">
     Open any LeetCode problem to use Hints & Debugging
   </div>
 
+  <script src="analytics.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

@@ -175,9 +175,11 @@ function injectPanel() {
       <div id="dsa-logo">
         <span id="dsa-logo-icon">⚡</span>
         <span id="dsa-logo-text">DSA Mentor</span>
+        <span id="dsa-streak-badge" title="Daily Practice Streak">🔥 1</span>
       </div>
       <button id="dsa-close">✕</button>
     </div>
+    <div id="dsa-badge-toast" class="dsa-badge-toast" style="display:none;"></div>
 
     <div id="dsa-buttons">
       <button class="dsa-btn" data-mode="hint">
@@ -280,6 +282,44 @@ function injectPanel() {
       background: linear-gradient(90deg, #f0f0f0, #888);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
+    }
+    #dsa-streak-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #fb923c;
+      background: rgba(251, 146, 60, 0.15);
+      border: 1px solid rgba(251, 146, 60, 0.35);
+      padding: 2px 7px;
+      border-radius: 999px;
+      margin-left: 8px;
+      user-select: none;
+      box-shadow: 0 0 10px rgba(251, 146, 60, 0.2);
+    }
+    .dsa-badge-toast {
+      position: absolute;
+      top: 48px;
+      left: 14px;
+      right: 14px;
+      background: linear-gradient(135deg, #1e1b4b, #312e81);
+      border: 1px solid #6366f1;
+      color: #e0e7ff;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 11px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+      z-index: 100;
+      animation: dsaToastSlide 0.3s ease-out;
+    }
+    .dsa-badge-toast .toast-icon { font-size: 16px; }
+    @keyframes dsaToastSlide {
+      from { opacity: 0; transform: translateY(-6px); }
+      to { opacity: 1; transform: translateY(0); }
     }
     #dsa-close {
       background: none;
@@ -531,8 +571,31 @@ function injectPanel() {
   })
 
   panel.classList.add('minimized')
+
+  if (window.DSAMentorAnalytics) {
+    window.DSAMentorAnalytics.getStoredStats().then(stats => {
+      updateStreakUI(stats.streakDays)
+    }).catch(() => {})
+  }
 }
 
+function updateStreakUI(days) {
+  const el = document.getElementById('dsa-streak-badge')
+  if (el) {
+    el.textContent = `🔥 ${days || 1}`
+    el.title = `${days || 1}-day practice streak! Open extension popup for badges & analytics.`
+  }
+}
+
+function showBadgeToast(badge) {
+  const toast = document.getElementById('dsa-badge-toast')
+  if (!toast || !badge) return
+  toast.innerHTML = `<span class="toast-icon">${badge.icon}</span> <div><strong>Badge Unlocked!</strong><div style="font-size:10px; color:#cbd5e1;">${badge.name} — ${badge.desc}</div></div>`
+  toast.style.display = 'flex'
+  setTimeout(() => {
+    toast.style.display = 'none'
+  }, 4500)
+}
 
 function updateDots(level) {
   document.querySelectorAll('.dot').forEach(dot => {
@@ -735,6 +798,22 @@ async function requestAI(mode, hintLevel = 1) {
         if (isLatestForView && isCurrentView(mode, hintLevel)) {
           setOutput(result)
         }
+
+        if (result && !result.startsWith('Error:') && !result.startsWith('⚠️ **Backend Server Offline') && window.DSAMentorAnalytics) {
+          window.DSAMentorAnalytics.recordInteraction({
+            problemTitle: problem.title,
+            difficulty: problem.difficulty,
+            description: problem.description,
+            mode,
+            hintLevel
+          }).then(({ stats, newlyUnlocked }) => {
+            updateStreakUI(stats.streakDays)
+            if (newlyUnlocked && newlyUnlocked.length > 0) {
+              showBadgeToast(newlyUnlocked[0])
+            }
+          }).catch(console.error)
+        }
+
         resolve(result)
       })
     } catch (err) {

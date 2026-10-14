@@ -22,7 +22,7 @@
     },
     {
       "matches": ["https://leetcode.com/problems/*"],
-      "js": ["content.js"],
+      "js": ["analytics.js", "content.js"],
       "run_at": "document_idle"
     }
   ],

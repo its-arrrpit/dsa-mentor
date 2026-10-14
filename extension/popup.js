@@ -1,4 +1,25 @@
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  // Navigation Tabs
+  const tabBtns = document.querySelectorAll('.tab-btn')
+  const tabPanes = document.querySelectorAll('.tab-pane')
+
+  tabBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const target = btn.dataset.tab
+      tabBtns.forEach(b => b.classList.remove('active'))
+      tabPanes.forEach(p => p.classList.remove('active'))
+
+      btn.classList.add('active')
+      const targetPane = document.getElementById(`pane-${target}`)
+      if (targetPane) targetPane.classList.add('active')
+
+      if (target === 'analytics' || target === 'achievements') {
+        refreshStatsUI()
+      }
+    })
+  })
+
+  // Provider Radio & Cards
   const radioGemini = document.getElementById('radio-gemini')
   const radioOllama = document.getElementById('radio-ollama')
   const cardGemini = document.getElementById('card-gemini')
@@ -82,7 +103,7 @@ document.addEventListener('DOMContentLoaded', () => {
           const opt = document.createElement('option')
           opt.value = m
           let tag = ''
-          if (m === 'gemini-2.5-flash') tag = ' (Recommended & Fast)'
+          if (m === 'gemini-2.5-flash') tag = ' (Fast & Free Tier)'
           else if (m === 'gemini-2.0-flash') tag = ' (Ultra Fast)'
           else if (m === 'gemini-1.5-flash') tag = ' (Standard)'
           else if (m.includes('pro')) tag = ' (Deep Reasoning)'
@@ -115,7 +136,6 @@ document.addEventListener('DOMContentLoaded', () => {
       fetchAndPopulateModels(items.geminiApiKey, items.geminiModel)
     }
     if (items.geminiModel) {
-      // If the option already exists in HTML, select it
       for (let i = 0; i < geminiModel.options.length; i++) {
         if (geminiModel.options[i].value === items.geminiModel) {
           geminiModel.selectedIndex = i
@@ -132,7 +152,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   })
 
-  // Whenever user leaves or finishes typing the API key, auto-fetch models
   geminiApiKey.addEventListener('blur', () => {
     const key = geminiApiKey.value.trim()
     if (key.length > 20) {
@@ -197,7 +216,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const data = await res.json()
         if (res.ok) {
           showStatus(`✓ Connected to ${model} successfully! (Latency OK)`, 'success')
-          // Also fetch available models in case they want to switch
           fetchAndPopulateModels(key, model)
         } else {
           const err = data.error?.message || 'Invalid API key or model.'
@@ -221,4 +239,121 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
   })
+
+  // ─── Analytics & Achievements UI Loading ───────────────────────────
+  async function refreshStatsUI() {
+    if (!window.DSAMentorAnalytics) return
+    const stats = await window.DSAMentorAnalytics.getStoredStats()
+
+    // 1. Streak Headers
+    const streakStr = `🔥 ${stats.streakDays || 1} Day${(stats.streakDays || 1) === 1 ? '' : 's'}`
+    const headerStreak = document.getElementById('headerStreak')
+    const achieveStreak = document.getElementById('achieveStreak')
+    if (headerStreak) headerStreak.textContent = streakStr
+    if (achieveStreak) achieveStreak.textContent = streakStr
+
+    // 2. Metrics Grid
+    const statProblems = document.getElementById('statProblems')
+    const statHints = document.getElementById('statHints')
+    const statDebugs = document.getElementById('statDebugs')
+    const statIndependence = document.getElementById('statIndependence')
+
+    const probCount = stats.totalProblemsPracticed || 0
+    const hintsCount = stats.totalHintsRequested || 0
+    const debugCount = stats.totalDebugRuns || 0
+
+    if (statProblems) statProblems.textContent = probCount
+    if (statHints) statHints.textContent = hintsCount
+    if (statDebugs) statDebugs.textContent = debugCount
+
+    if (statIndependence) {
+      if (probCount === 0) {
+        statIndependence.textContent = '100%'
+      } else {
+        const ratio = Math.max(15, Math.min(100, Math.round(100 - (hintsCount / probCount) * 20)))
+        statIndependence.textContent = `${ratio}%`
+      }
+    }
+
+    // 3. Cognitive Bottleneck Breakdown
+    const lvl1 = stats.hintsByLevel?.['1'] || 0
+    const lvl2 = stats.hintsByLevel?.['2'] || 0
+    const lvl3 = stats.hintsByLevel?.['3'] || 0
+    const totalLvl = Math.max(1, lvl1 + lvl2 + lvl3)
+
+    document.getElementById('countLvl1').textContent = lvl1
+    document.getElementById('countLvl2').textContent = lvl2
+    document.getElementById('countLvl3').textContent = lvl3
+
+    document.getElementById('barLvl1').style.width = `${Math.round((lvl1 / totalLvl) * 100)}%`
+    document.getElementById('barLvl2').style.width = `${Math.round((lvl2 / totalLvl) * 100)}%`
+    document.getElementById('barLvl3').style.width = `${Math.round((lvl3 / totalLvl) * 100)}%`
+
+    // 4. Topic Weakness Diagnostics
+    const weaknessList = document.getElementById('weaknessList')
+    if (weaknessList) {
+      const topicEntries = Object.entries(stats.topics || {})
+      if (topicEntries.length === 0) {
+        weaknessList.innerHTML = `<div style="font-size:11px; color:#64748b; text-align:center; padding:10px;">Practice problems on LeetCode to populate weakness diagnostics.</div>`
+      } else {
+        weaknessList.innerHTML = ''
+        topicEntries.sort((a, b) => (b[1].hints / Math.max(1, b[1].attempts)) - (a[1].hints / Math.max(1, a[1].attempts)))
+
+        topicEntries.forEach(([topicName, data]) => {
+          const struggleRatio = data.hints / Math.max(1, data.attempts)
+          let tagClass = 'tag-strong'
+          let tagText = '✅ Solid'
+          if (struggleRatio >= 2.0) {
+            tagClass = 'tag-struggle'
+            tagText = '⚠️ High Struggle'
+          } else if (struggleRatio >= 1.0) {
+            tagClass = 'tag-moderate'
+            tagText = '⚡ Moderate'
+          }
+
+          const item = document.createElement('div')
+          item.className = 'weakness-item'
+          item.innerHTML = `
+            <div>
+              <strong style="color:#fff;">${topicName}</strong>
+              <div style="font-size:10px; color:#94a3b8;">${data.attempts} attempt${data.attempts === 1 ? '' : 's'} • ${data.hints} hint${data.hints === 1 ? '' : 's'}</div>
+            </div>
+            <span class="weakness-tag ${tagClass}">${tagText}</span>
+          `
+          weaknessList.appendChild(item)
+        })
+      }
+    }
+
+    // 5. Achievements & Badges Grid
+    const badgeGrid = document.getElementById('badgeGrid')
+    const badgeCounter = document.getElementById('badgeCounter')
+    if (badgeGrid && window.DSAMentorAnalytics.ALL_BADGES) {
+      badgeGrid.innerHTML = ''
+      const all = window.DSAMentorAnalytics.ALL_BADGES
+      const unlockedIds = stats.unlockedBadgeIds || []
+
+      if (badgeCounter) {
+        badgeCounter.textContent = `${unlockedIds.length} / ${all.length} Unlocked`
+      }
+
+      all.forEach(badge => {
+        const isUnlocked = unlockedIds.includes(badge.id)
+        const card = document.createElement('div')
+        card.className = `badge-card ${isUnlocked ? 'unlocked' : 'locked'}`
+        card.innerHTML = `
+          <div class="badge-card-header">
+            <span class="badge-card-icon">${badge.icon}</span>
+            <span class="badge-card-name">${badge.name}</span>
+          </div>
+          <div class="badge-card-desc">${badge.desc}</div>
+          <span class="badge-status-pill">${isUnlocked ? '✓ Unlocked' : '🔒 Locked'}</span>
+        `
+        badgeGrid.appendChild(card)
+      })
+    }
+  }
+
+  // Initial load
+  refreshStatsUI()
 })
