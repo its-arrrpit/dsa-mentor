@@ -210,18 +210,21 @@ TASK:
 Examine the user's code line-by-line for syntax errors, boundary bugs, array bounds violations, or logic errors.
 
 AUDIT CHECKLIST (Inspect before making any verdict):
-1. Array bounds & sizing:
+1. Missing Return Statement (CRITICAL):
+   - In Java, C++, and C#, if the method return type is non-void (e.g. int[], int, boolean, List, TreeNode, etc.) and all return statements are inside an 'if' condition or loop, the compiler will fail with "error: missing return statement".
+   - If there is NO guaranteed fallback return statement outside the loops (or if the fallback return is commented out), Verdict MUST be: BUG_FOUND.
+2. Array bounds & sizing:
    - Check every array allocation (e.g. new Type[N]). Valid indices are 0 to N - 1.
    - Check loop boundaries: does any loop index accessing an array iterate up to <= N instead of < N?
      If i <= n is used when indexing an array of size n, it WILL throw ArrayIndexOutOfBoundsException when i == n!
-2. Problem constraints:
+3. Problem constraints:
    - Does the loop check boundaries matching "strictly less than n" or off-by-one?
-3. Uninitialized or incorrectly initialized variables.
-4. If ANY bug, bounds crash, or logic flaw is found:
+4. Uninitialized or incorrectly initialized variables.
+5. If ANY bug, bounds crash, or logic flaw is found:
    - Verdict MUST be: BUG_FOUND
    - Quote the offending line and explain why it fails.
    - State the concise fix.
-5. If and only if all array bounds, loops, and logic are completely free of bugs:
+6. If and only if all array bounds, loops, returns, and logic are completely free of bugs:
    - Verdict: NO_BUG
    - State in 1-2 sentences why the implementation is sound.
 
@@ -317,20 +320,69 @@ function checkSyntaxPitfalls(code, language) {
       return `⚠️ **Syntax Error Detected**\n\nStray period \`.\` before semicolon in \`${dotSemiMatch[0]}\`.\n\n**Fix:** Change \`${dotSemiMatch[0]}\` to \`${dotSemiMatch[1]};\`.`
     }
 
-    // 2. Missing semicolon on return: e.g. "return count\n"
-    const missingSemiMatch = src.match(/return\s+([a-zA-Z0-9_]+)\s*(?=\r?\n\s*\}|$)/m)
-    if (missingSemiMatch) {
-      const fullLine = src.match(new RegExp(`return\\s+${missingSemiMatch[1]}\\s*([^;\\r\\n]*)`, 'm'))
-      if (fullLine && !fullLine[0].includes(';')) {
-        return `⚠️ **Syntax Error Detected**\n\nMissing semicolon \`;\` on return statement: \`${fullLine[0].trim()}\`.\n\n**Fix:** Change to \`return ${missingSemiMatch[1]};\`.`
-      }
-    }
-
-    // 3. Mismatched curly braces
+    // 2. Mismatched curly braces
     const openBraces = (src.match(/\{/g) || []).length
     const closeBraces = (src.match(/\}/g) || []).length
     if (openBraces !== closeBraces) {
       return `⚠️ **Syntax Error Detected**\n\nMismatched curly braces in your code (${openBraces} opening \`{\` vs ${closeBraces} closing \`}\`).`
+    }
+
+    // 3. Missing array brackets in Java: e.g. "new int{}" instead of "new int[]{}"
+    if (lang.includes('java')) {
+      const missingBracketsMatch = src.match(/new\s+(int|long|boolean|char|double|float|byte|short|String)\s*\{([^}]*)\}/)
+      if (missingBracketsMatch) {
+        return `⚠️ **Syntax Error Detected**\n\nInvalid array instantiation \`${missingBracketsMatch[0]}\` (missing array brackets \`[]\`).\n\n**Fix:** Change to \`new ${missingBracketsMatch[1]}[]{${missingBracketsMatch[2]}}\`.`
+      }
+    }
+
+    // 4. Missing semicolon on statements (Java, C, C++, JS, TS)
+    const lines = src.split(/\r?\n/)
+    for (let i = 0; i < lines.length; i++) {
+      const rawLine = lines[i]
+      const line = rawLine.replace(/\/\/.*$/, '').trim()
+      if (!line) continue
+
+      // Ignore comments, preprocessor directives, and annotations
+      if (line.startsWith('/*') || line.startsWith('*') || line.startsWith('#') || line.startsWith('@')) continue
+
+      // Ignore block openers, colons (labels/cases), or commas (multi-line declarations)
+      if (/[{:,]$/.test(line)) continue
+
+      // Ignore lines that are just closing braces
+      if (/^}+$/.test(line)) continue
+
+      // Ignore control flow headers
+      if (/^(if|else if|else|for|while|do|switch|case|default|try|catch|finally)\b/.test(line)) continue
+
+      // Ignore class/interface/enum headers
+      if (/^(public|private|protected)?\s*(static\s+)?(final\s+)?(class|interface|enum)\b/.test(line)) continue
+
+      // Ignore method definition headers (e.g. public int[] twoSum(...) without { on same line)
+      if (/^(public|private|protected)?\s*[\w<>\[\]]+\s+\w+\s*\([^)]*\)\s*$/.test(line)) continue
+
+      // If line does not end with semicolon, verify if it is an active statement line
+      if (!line.endsWith(';')) {
+        if (/^return\b/.test(line) || /[a-zA-Z0-9_")'\]\+\-]$/.test(line)) {
+          return `⚠️ **Syntax Error Detected**\n\nMissing semicolon \`;\` on line ${i + 1}:\n\`${line}\`\n\n**Fix:** Add \`;\` at the end of the line: \`${line};\`.`
+        }
+      }
+    }
+
+    // 4. Missing return statement in non-void Java / C++ methods
+    if (lang.includes('java') || lang.includes('cpp')) {
+      const nonVoidMethod = src.match(/(?:public|private|protected)?\s*(?:static\s+)?(int\[\]|int|boolean|String|List<[\w<>]+>|ListNode|TreeNode|vector<[\w<>]+>)\s+(\w+)\s*\([^)]*\)\s*\{/m)
+      if (nonVoidMethod) {
+        const returnType = nonVoidMethod[1]
+        const methodName = nonVoidMethod[2]
+        const clean = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '')
+        const hasReturnBeforeMethodEnd = /return\s+[^;]+;\s*\}\s*(\}\s*)?$/.test(clean.trim())
+        if (!hasReturnBeforeMethodEnd && !clean.includes('throw ')) {
+          if (/for\s*\(|while\s*\(|if\s*\(/.test(clean)) {
+            const hasCommentedReturn = /\/\/\s*return\b/.test(src)
+            return `⚠️ **Compile Error Detected**\n\nMissing return statement in method \`${methodName}\`${hasCommentedReturn ? ' (the fallback return statement is commented out)' : ''}. In Java, a non-void method (\`${returnType}\`) must guarantee a return on all execution paths.\n\n**Fix:** Add an active fallback return statement at the end of \`${methodName}\` (e.g. \`return new ${returnType}{};\`).`
+          }
+        }
+      }
     }
   }
 
